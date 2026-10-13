@@ -6,7 +6,9 @@ from app.models.user import User
 from app.models.role import Role
 from app.schemas.user import UserCreate, UserResponse, UserUpdate
 from app.core.security import hash_password
-from app.models.role import Role
+
+
+DEFAULT_ROLE_NAME = "user"
 
 router = APIRouter(
     prefix="/users",
@@ -16,6 +18,10 @@ router = APIRouter(
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
+    """
+    Public registration. New accounts always get the default role;
+    only an admin can change it afterwards through PUT /users/{user_id}.
+    """
 
     existing_user = db.query(User).filter(User.username == user.username).first()
 
@@ -33,20 +39,20 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
             detail="Email already exists"
         )
 
-    role = db.query(Role).filter(Role.id == user.role_id).first()
+    role = db.query(Role).filter(Role.name == DEFAULT_ROLE_NAME).first()
 
     if not role:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Role not found"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Default role is not configured. Run the seed script."
         )
 
     new_user = User(
         username=user.username,
         email=user.email,
-        full_name=user.full_name,
+        full_name=user.full_name or "",
         hashed_password=hash_password(user.password),
-        role_id=user.role_id
+        role_id=role.id
     )
 
     db.add(new_user)

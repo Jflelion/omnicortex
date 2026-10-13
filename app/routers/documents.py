@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     Depends,
     File,
     UploadFile,
@@ -12,6 +13,7 @@ from fastapi import (
 
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.database.database import get_db
 
 from app.models.document import Document
@@ -30,6 +32,10 @@ from app.services.document_text_extractor import (
     extract_text_from_pdf
 )
 
+from app.services.document_indexing_service import (
+    index_document_in_background
+)
+
 from app.services.text_chunker import (
     chunk_text
 )
@@ -40,6 +46,10 @@ from app.services.rag_service import ask_question
 
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
+
+MAX_UPLOAD_SIZE_BYTES = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
+UPLOAD_READ_CHUNK_BYTES = 1024 * 1024
+PDF_MAGIC_BYTES = b"%PDF-"
 
 
 router = APIRouter(
@@ -54,35 +64,37 @@ router = APIRouter(
     status_code=status.HTTP_201_CREATED
 )
 def upload_document(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    file_extension = Path(
-        file.filename or ""
-    ).suffix
+    if Path(file.filename or "").suffix.lower() != ".pdf":
 
-    stored_filename = (
-        f"{uuid4()}{file_extension}"
-    )
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="Only PDF files are allowed"
+        )
+
+    stored_filename = f"{uuid4()}.pdf"
 
     file_path = (
         UPLOAD_DIR / stored_filename
     )
 
-    with file_path.open("wb") as buffer:
-        buffer.write(
-            file.file.read()
+    _save_upload(file, file_path)
+
+    try:
+        extracted_text = extract_text_from_pdf(
+            str(file_path)
         )
 
-    extracted_text: str | None = None
+    except Exception:
+        file_path.unlink(missing_ok=True)
 
-    if file.content_type == "application/pdf":
-
-        extracted_text = (
-            extract_text_from_pdf(
-                str(file_path)
-            )
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The PDF file could not be read"
         )
 
     document = Document(
@@ -91,10 +103,9 @@ def upload_document(
 
         filepath=str(file_path),
 
-        content_type=file.content_type
-        or "application/octet-stream",
+        content_type="application/pdf",
 
-        extracted_text=extracted_text,
+        extracted_text=extracted_text or None,
 
         owner_id=current_user.id
     )
@@ -125,7 +136,60 @@ def upload_document(
 
         db.commit()
 
+        background_tasks.add_task(
+            index_document_in_background,
+            document.id
+        )
+
     return document
+
+
+def _save_upload(
+    file: UploadFile,
+    file_path: Path
+) -> None:
+    """
+    Stream the upload to disk in fixed-size blocks, rejecting files that
+    exceed MAX_UPLOAD_SIZE_BYTES or do not start with the PDF signature.
+    """
+
+    total_bytes = 0
+
+    try:
+        with file_path.open("wb") as buffer:
+
+            while block := file.file.read(UPLOAD_READ_CHUNK_BYTES):
+
+                if total_bytes == 0 and not block.startswith(
+                    PDF_MAGIC_BYTES
+                ):
+                    raise HTTPException(
+                        status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                        detail="The file is not a valid PDF"
+                    )
+
+                total_bytes += len(block)
+
+                if total_bytes > MAX_UPLOAD_SIZE_BYTES:
+                    raise HTTPException(
+                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                        detail=(
+                            "File exceeds the maximum size of "
+                            f"{settings.MAX_UPLOAD_SIZE_MB} MB"
+                        )
+                    )
+
+                buffer.write(block)
+
+        if total_bytes == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="The file is empty"
+            )
+
+    except HTTPException:
+        file_path.unlink(missing_ok=True)
+        raise
 
 
 @router.get(
@@ -257,6 +321,51 @@ def get_document(
         )
 
     return document
+
+
+@router.delete(
+    "/{document_id}",
+    status_code=status.HTTP_204_NO_CONTENT
+)
+def delete_document(
+    document_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        get_current_active_user
+    )
+):
+    document = (
+        db.query(Document)
+        .filter(
+            Document.id
+            == document_id,
+
+            Document.owner_id
+            == current_user.id
+        )
+        .first()
+    )
+
+    if not document:
+
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found"
+        )
+
+    file_path = Path(document.filepath)
+
+    db.query(DocumentChunk).filter(
+        DocumentChunk.document_id
+        == document_id
+    ).delete(synchronize_session=False)
+
+    db.delete(document)
+    db.commit()
+
+    file_path.unlink(missing_ok=True)
+
+    return None
 
 
 @router.post(

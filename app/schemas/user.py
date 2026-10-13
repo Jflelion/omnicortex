@@ -10,7 +10,6 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
-    role_id: int
 
 class UserUpdate(BaseModel):
     email: EmailStr | None = None

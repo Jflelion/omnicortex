@@ -81,7 +81,7 @@ def login(
 
     access_token: str = create_access_token(
         data={
-            "sub": user.username
+            "sub": str(user.id)
         }
     )
 
@@ -111,9 +111,9 @@ def get_current_user(
             }
         )
 
-    username = payload.get("sub")
+    subject = payload.get("sub")
 
-    if not username:
+    if not isinstance(subject, str) or not subject.isdigit():
 
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -124,7 +124,7 @@ def get_current_user(
         )
 
     user = db.query(User).filter(
-        User.username == username
+        User.id == int(subject)
     ).first()
 
     if not user:

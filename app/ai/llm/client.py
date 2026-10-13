@@ -1,5 +1,6 @@
 import requests
 
+from app.core.exceptions import AIServiceUnavailableError
 from app.ai.llm.models import LLMResponse
 
 
@@ -30,21 +31,27 @@ class OllamaClient:
             Normalized LLMResponse.
         """
 
-        response = requests.post(
-            OLLAMA_URL,
-            json={
-                "model": OLLAMA_MODEL,
-                "prompt": prompt,
-                "stream": False,
-                "keep_alive": "30m",
-                "options": {
-                    "num_predict": 120,
+        try:
+            response = requests.post(
+                OLLAMA_URL,
+                json={
+                    "model": OLLAMA_MODEL,
+                    "prompt": prompt,
+                    "stream": False,
+                    "keep_alive": "30m",
+                    "options": {
+                        "num_predict": 120,
+                    },
                 },
-            },
-            timeout=300,
-        )
+                timeout=300,
+            )
 
-        response.raise_for_status()
+            response.raise_for_status()
+
+        except requests.RequestException as error:
+            raise AIServiceUnavailableError(
+                "Language model service is unavailable"
+            ) from error
 
         data = response.json()
 
