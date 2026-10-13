@@ -9,7 +9,7 @@ from collections.abc import Callable, Iterator
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -32,6 +32,12 @@ def db() -> Iterator[Session]:
         connect_args={"check_same_thread": False},
         poolclass=StaticPool
     )
+
+    # SQLite ignores foreign keys unless asked; enable them so ON DELETE
+    # CASCADE behaves as in PostgreSQL.
+    @event.listens_for(engine, "connect")
+    def _enable_foreign_keys(dbapi_connection, _):
+        dbapi_connection.execute("PRAGMA foreign_keys=ON")
 
     Base.metadata.create_all(engine)
 

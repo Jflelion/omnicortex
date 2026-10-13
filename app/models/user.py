@@ -51,7 +51,11 @@ class User(Base):
         back_populates="users"
     )
     
+    # Documents (and their chunks) are removed by the database
+    # (ON DELETE CASCADE).
     documents = relationship(
         "Document",
-        back_populates="owner"
+        back_populates="owner",
+        cascade="all, delete-orphan",
+        passive_deletes=True
     )

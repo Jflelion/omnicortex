@@ -16,7 +16,7 @@ class DocumentChunk(Base):
     )
 
     document_id: Mapped[int] = mapped_column(
-        ForeignKey("documents.id"),
+        ForeignKey("documents.id", ondelete="CASCADE"),
         nullable=False
     )
 

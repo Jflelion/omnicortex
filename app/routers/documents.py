@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.database.database import get_db
 
-from app.models.document import Document
+from app.models.document import Document, DocumentStatus
 from app.models.document_chunk import DocumentChunk
 from app.models.user import User
 
@@ -43,6 +43,11 @@ from app.services.text_chunker import (
 from app.schemas.ask import AskRequest, AskResponse, AskSource
 from app.services.rag_service import ask_question
 
+
+NO_TEXT_ERROR_MESSAGE = (
+    "No extractable text was found. The PDF may be scanned or "
+    "image-only."
+)
 
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
@@ -106,6 +111,16 @@ def upload_document(
         content_type="application/pdf",
 
         extracted_text=extracted_text or None,
+
+        status=(
+            DocumentStatus.PROCESSING
+            if extracted_text
+            else DocumentStatus.FAILED
+        ),
+
+        error_message=(
+            None if extracted_text else NO_TEXT_ERROR_MESSAGE
+        ),
 
         owner_id=current_user.id
     )
@@ -357,17 +372,77 @@ def delete_document(
 
     file_path = Path(document.filepath)
 
-    db.query(DocumentChunk).filter(
-        DocumentChunk.document_id
-        == document_id
-    ).delete(synchronize_session=False)
-
+    # Chunks are removed by ON DELETE CASCADE.
     db.delete(document)
     db.commit()
 
     file_path.unlink(missing_ok=True)
 
     return None
+
+
+@router.post(
+    "/{document_id}/reindex",
+    response_model=DocumentResponse,
+    status_code=status.HTTP_202_ACCEPTED
+)
+def reindex_document(
+    document_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(
+        get_current_active_user
+    )
+):
+    """
+    Retry indexing a document whose processing failed. Only the chunks
+    still missing an embedding are processed.
+    """
+
+    document = (
+        db.query(Document)
+        .filter(
+            Document.id
+            == document_id,
+
+            Document.owner_id
+            == current_user.id
+        )
+        .first()
+    )
+
+    if not document:
+
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found"
+        )
+
+    if document.status != DocumentStatus.FAILED:
+
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Document is already {document.status}"
+        )
+
+    if not document.extracted_text:
+
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="Document has no extractable text to index"
+        )
+
+    document.status = DocumentStatus.PROCESSING
+    document.error_message = None
+    db.commit()
+    db.refresh(document)
+
+    background_tasks.add_task(
+        index_document_in_background,
+        document.id
+    )
+
+    return document
 
 
 @router.post(

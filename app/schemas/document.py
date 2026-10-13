@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
+from app.models.document import DocumentStatus
 from app.schemas.user import UserResponse
 
 
@@ -12,7 +13,8 @@ class DocumentBase(BaseModel):
 
 class DocumentResponse(DocumentBase):
     id: int
-    filepath: str
+    status: DocumentStatus
+    error_message: str | None
     uploaded_at: datetime
     owner: UserResponse
 

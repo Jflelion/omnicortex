@@ -20,6 +20,17 @@ El formato se inspira en Keep a Changelog y el proyecto seguirá versionado sem�
 - Arquitectura de proveedores de IA.
 - Pruebas automatizadas.
 
+### Added
+
+- Estado de procesamiento en documentos (`processing`, `ready`, `failed`) y `error_message`.
+- `POST /documents/{id}/reindex` para reintentar documentos fallidos.
+- Borrado en cascada (`ON DELETE CASCADE`) de usuario → documentos → chunks; los archivos subidos también se eliminan.
+
+### Changed
+
+- Las respuestas de documentos ya no exponen la ruta interna del archivo (`filepath`).
+- `embed_chunks` actualiza el estado de cada documento que procesa.
+
 ---
 
 ## [0.4.0] — Engineering Excellence Sprint

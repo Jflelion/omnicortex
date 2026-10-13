@@ -1,9 +1,16 @@
 from datetime import datetime, timezone
+from enum import StrEnum
 
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.database import Base
+
+
+class DocumentStatus(StrEnum):
+    PROCESSING = "processing"
+    READY = "ready"
+    FAILED = "failed"
 
 
 class Document(Base):
@@ -20,24 +27,40 @@ class Document(Base):
         nullable=False
     )
 
+    # Internal storage path. Never exposed through the API.
     filepath: Mapped[str] = mapped_column(
         String,
         nullable=False
     )
 
+    # Chunks are removed by the database (ON DELETE CASCADE).
     chunks = relationship(
-    "DocumentChunk",
-    back_populates="document"
+        "DocumentChunk",
+        back_populates="document",
+        cascade="all, delete-orphan",
+        passive_deletes=True
     )
 
     content_type: Mapped[str] = mapped_column(
         String,
         nullable=False
     )
-    
+
     extracted_text: Mapped[str | None] = mapped_column(
-    Text,
-    nullable=True
+        Text,
+        nullable=True
+    )
+
+    status: Mapped[str] = mapped_column(
+        String(20),
+        nullable=False,
+        default=DocumentStatus.PROCESSING,
+        server_default=DocumentStatus.PROCESSING.value
+    )
+
+    error_message: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True
     )
 
     uploaded_at: Mapped[datetime] = mapped_column(
@@ -46,7 +69,7 @@ class Document(Base):
     )
 
     owner_id: Mapped[int] = mapped_column(
-        ForeignKey("users.id"),
+        ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False
     )
 

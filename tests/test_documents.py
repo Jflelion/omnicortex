@@ -1,7 +1,7 @@
 import fitz  # pyright: ignore[reportMissingTypeStubs]
 import pytest
 
-from app.models.document import Document
+from app.models.document import Document, DocumentStatus
 from app.models.document_chunk import DocumentChunk
 from app.routers import documents
 from tests.conftest import auth_headers
@@ -119,3 +119,85 @@ def test_cannot_access_or_delete_other_users_documents(client, db, create_user):
     assert client.get(f"/documents/{document_id}", headers=intruder_headers).status_code == 404
     assert client.delete(f"/documents/{document_id}", headers=intruder_headers).status_code == 404
     assert db.get(Document, document_id) is not None
+
+
+def test_upload_response_exposes_status_but_not_internal_path(client, create_user):
+    user = create_user("alice")
+
+    body = upload(client, auth_headers(user), "a.pdf", make_pdf("Hola")).json()
+
+    assert body["status"] == "processing"
+    assert body["error_message"] is None
+    assert "filepath" not in body
+
+
+def test_upload_pdf_without_text_is_marked_failed(client, create_user, isolated_uploads):
+    _, indexed = isolated_uploads
+    user = create_user("alice")
+
+    response = upload(client, auth_headers(user), "escaneado.pdf", make_pdf(""))
+
+    assert response.status_code == 201
+    assert response.json()["status"] == "failed"
+    assert response.json()["error_message"]
+    assert indexed == []
+
+
+def test_reindex_failed_document_queues_indexing(client, db, create_user, isolated_uploads):
+    _, indexed = isolated_uploads
+    user = create_user("alice")
+    headers = auth_headers(user)
+
+    document_id = upload(client, headers, "a.pdf", make_pdf("Hola")).json()["id"]
+    document = db.get(Document, document_id)
+    document.status = DocumentStatus.FAILED
+    document.error_message = "boom"
+    db.commit()
+
+    response = client.post(f"/documents/{document_id}/reindex", headers=headers)
+
+    assert response.status_code == 202
+    assert response.json()["status"] == "processing"
+    assert response.json()["error_message"] is None
+    assert indexed == [document_id, document_id]
+
+
+def test_reindex_rejects_documents_not_failed(client, create_user):
+    user = create_user("alice")
+    headers = auth_headers(user)
+
+    document_id = upload(client, headers, "a.pdf", make_pdf("Hola")).json()["id"]
+
+    response = client.post(f"/documents/{document_id}/reindex", headers=headers)
+
+    assert response.status_code == 409
+
+
+def test_reindex_rejects_documents_without_text(client, create_user):
+    user = create_user("alice")
+    headers = auth_headers(user)
+
+    document_id = upload(client, headers, "a.pdf", make_pdf("")).json()["id"]
+
+    response = client.post(f"/documents/{document_id}/reindex", headers=headers)
+
+    assert response.status_code == 422
+
+
+def test_deleting_user_cascades_to_documents_chunks_and_files(
+    client, db, create_user, isolated_uploads
+):
+    upload_dir, _ = isolated_uploads
+    owner = create_user("alice")
+    admin = create_user("root", role_name="admin")
+
+    upload(client, auth_headers(owner), "a.pdf", make_pdf("Hola"))
+    upload(client, auth_headers(owner), "b.pdf", make_pdf("Adios"))
+
+    response = client.delete(f"/users/{owner.id}", headers=auth_headers(admin))
+
+    assert response.status_code == 204
+    db.expire_all()
+    assert db.query(Document).count() == 0
+    assert db.query(DocumentChunk).count() == 0
+    assert list(upload_dir.iterdir()) == []

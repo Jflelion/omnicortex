@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.core.permissions import require_roles
@@ -172,7 +174,14 @@ def delete_user(
             detail="User not found"
         )
 
+    # Documents and chunks are removed by ON DELETE CASCADE; the stored
+    # files have to be removed by hand once the transaction succeeds.
+    file_paths = [Path(document.filepath) for document in user.documents]
+
     db.delete(user)
     db.commit()
+
+    for file_path in file_paths:
+        file_path.unlink(missing_ok=True)
 
     return None

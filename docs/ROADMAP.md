@@ -137,8 +137,8 @@ Estado: en desarrollo.
 - Background jobs.
 - Redis.
 - Workers.
-- Estados de procesamiento.
-- Reintentos.
+- [x] Estados de procesamiento.
+- [x] Reintentos (manual, `POST /documents/{id}/reindex`).
 - Procesamiento por lotes.
 - Cola de embeddings.
 - Indexación asíncrona.

@@ -18,6 +18,8 @@ OmniCortex is a backend for a document intelligence platform. Users upload PDFs,
 - Public registration (always assigned the `user` role)
 - PDF upload with type and size validation
 - Text extraction, chunking with overlap and background embedding generation
+- Document processing status (`processing` → `ready` / `failed`) with error message and retry endpoint
+- Cascade deletes: removing a document or user removes its chunks and stored files
 - Semantic search and hybrid retrieval (vector + keyword) with reranking
 - `/documents/ask`: grounded answers with auditable sources
 - Request IDs and per-stage timing of the RAG pipeline
@@ -97,7 +99,7 @@ Swagger: http://127.0.0.1:8000/docs
 
 1. Register with `POST /users/`.
 2. Log in with `POST /auth/login` and use the token in Swagger `Authorize`.
-3. Upload a PDF with `POST /documents/upload`. Embeddings are generated in the background after the response.
+3. Upload a PDF with `POST /documents/upload`. Embeddings are generated in the background after the response; poll `GET /documents/{id}` until `status` is `ready`. If it ends up `failed` (e.g. Ollama was down), retry with `POST /documents/{id}/reindex`.
 4. Ask with `POST /documents/ask` or search with `POST /documents/search`.
 
 If Ollama was down during an upload, the chunks stay without embeddings. Index them later with:
@@ -138,6 +140,7 @@ python -m app.database.embed_chunks
 - `GET /documents/{document_id}`
 - `GET /documents/{document_id}/chunks`
 - `DELETE /documents/{document_id}`
+- `POST /documents/{document_id}/reindex`
 - `POST /documents/search`
 - `POST /documents/ask`
 
