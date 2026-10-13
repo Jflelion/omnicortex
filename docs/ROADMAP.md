@@ -96,11 +96,11 @@ Estado: en desarrollo.
 
 ### Testing
 
-- [ ] Configurar pytest.
-- [ ] Tests del chunker.
-- [ ] Tests del reranker.
-- [ ] Tests del prompt builder.
-- [ ] Tests de autenticación.
+- [x] Configurar pytest.
+- [x] Tests del chunker.
+- [x] Tests del reranker.
+- [x] Tests del prompt builder.
+- [x] Tests de autenticación.
 - [ ] Tests de integración RAG.
 
 ---

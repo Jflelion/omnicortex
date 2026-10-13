@@ -174,7 +174,7 @@ def _save_upload(
 
                 if total_bytes > MAX_UPLOAD_SIZE_BYTES:
                     raise HTTPException(
-                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                        status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                         detail=(
                             "File exceeds the maximum size of "
                             f"{settings.MAX_UPLOAD_SIZE_MB} MB"

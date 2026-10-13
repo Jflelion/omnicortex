@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from app.schemas.user import UserResponse
 
@@ -16,5 +16,4 @@ class DocumentResponse(DocumentBase):
     uploaded_at: datetime
     owner: UserResponse
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
