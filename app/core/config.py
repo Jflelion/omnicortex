@@ -27,9 +27,24 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = "nomic-embed-text"
     EMBEDDING_TIMEOUT_SECONDS: int = 60
 
+    HEALTH_CHECK_TIMEOUT_SECONDS: int = 3
+
+    # Comma-separated list of allowed frontend origins.
+    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [
+            origin.strip()
+            for origin in self.CORS_ORIGINS.split(",")
+            if origin.strip()
+        ]
+
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",
-        env_file_encoding="utf-8"
+        env_file_encoding="utf-8",
+        # .env also holds variables for docker-compose (POSTGRES_*, ...).
+        extra="ignore"
     )
 
 

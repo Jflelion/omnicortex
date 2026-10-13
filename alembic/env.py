@@ -23,7 +23,16 @@ from app.database.database import Base
 from app.models.role import Role  # pyright: ignore[reportUnusedImport]
 from app.models.user import User  # pyright: ignore[reportUnusedImport]
 
+from app.core.config import settings
+
 target_metadata = Base.metadata
+
+# The database URL comes from .env / environment, never from alembic.ini.
+# "%" is escaped because ConfigParser treats it as interpolation syntax.
+config.set_main_option(
+    "sqlalchemy.url",
+    settings.DATABASE_URL.replace("%", "%%")
+)
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

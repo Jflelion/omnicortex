@@ -21,6 +21,8 @@ OmniCortex is a backend for a document intelligence platform. Users upload PDFs,
 - Semantic search and hybrid retrieval (vector + keyword) with reranking
 - `/documents/ask`: grounded answers with auditable sources
 - Request IDs and per-stage timing of the RAG pipeline
+- `/health` endpoint and configurable CORS
+- Dockerfile + docker-compose (API + Postgres)
 - `503 Service Unavailable` when Ollama is down or times out
 
 ## Project Structure
@@ -50,37 +52,44 @@ omnicortex/
 
 ## Setup
 
-### 1. Environment
+### Option A: everything in Docker
+
+Requires Docker and Ollama running on the host.
+
+```powershell
+copy .env.example .env      # set SECRET_KEY and POSTGRES_PASSWORD
+ollama pull nomic-embed-text
+ollama pull qwen2.5:3b
+docker compose up -d --build
+```
+
+The API container applies migrations and seeds the default roles on startup, then listens on http://127.0.0.1:8000. It reaches Ollama on the host through `host.docker.internal`.
+
+Note: `POSTGRES_*` values only take effect the first time the database volume is created.
+
+### Option B: local development
 
 ```powershell
 python -m venv venv
 venv\Scripts\activate
 pip install -r requirements-dev.txt
 copy .env.example .env
-```
 
-Edit `.env` and set at least `DATABASE_URL` and `SECRET_KEY`. Every other value has a default (see `app/core/config.py`).
-
-### 2. Database
-
-```powershell
-docker compose up -d
+docker compose up -d db
 alembic upgrade head
 python -m app.database.seed
-```
 
-### 3. Ollama
-
-```powershell
 ollama pull nomic-embed-text
 ollama pull qwen2.5:3b
-```
 
-### 4. Run the API
-
-```powershell
 python run.py
 ```
+
+`DATABASE_URL` in `.env` must use the same user, password and database as `POSTGRES_*`. Every other setting has a default (see `app/core/config.py`).
+
+### Health check
+
+`GET /health` returns 200 when the database and Ollama (with both models) are reachable, and 503 with details otherwise.
 
 Swagger: http://127.0.0.1:8000/docs
 
@@ -98,6 +107,10 @@ python -m app.database.embed_chunks
 ```
 
 ## API
+
+### Health
+
+- `GET /health`
 
 ### Auth
 
