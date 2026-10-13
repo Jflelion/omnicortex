@@ -1,7 +1,3 @@
-
-# 3. Crear `ROADMAP.md`
-
-```markdown
 # OmniCortex Roadmap
 
 ## Visión
@@ -73,29 +69,29 @@ Estado: en desarrollo.
 - [x] Crear capa `app/observability`.
 - [x] Configuración base de logging.
 - [x] Clase Timer.
-- [ ] Medir retrieval.
-- [ ] Medir reranking.
-- [ ] Medir prompt building.
-- [ ] Medir generación LLM.
-- [ ] Medir tiempo total.
-- [ ] Correlation ID.
+- [x] Medir retrieval.
+- [x] Medir reranking.
+- [x] Medir prompt building.
+- [x] Medir generación LLM.
+- [x] Medir tiempo total.
+- [x] Correlation ID.
 - [ ] Métricas básicas.
 
 ### Configuración
 
-- [ ] Mover modelos Ollama a `.env`.
-- [ ] Mover URLs a `.env`.
-- [ ] Configurar chunk size.
-- [ ] Configurar overlap.
+- [x] Mover modelos Ollama a `.env`.
+- [x] Mover URLs a `.env`.
+- [x] Configurar chunk size.
+- [x] Configurar overlap.
 - [ ] Configurar top-k.
-- [ ] Configurar timeouts.
+- [x] Configurar timeouts.
 
 ### Error Handling
 
-- [ ] Errores de Ollama.
-- [ ] Timeouts.
-- [ ] Errores de extracción.
-- [ ] Errores de embeddings.
+- [x] Errores de Ollama.
+- [x] Timeouts.
+- [x] Errores de extracción.
+- [x] Errores de embeddings.
 - [ ] Respuestas HTTP estructuradas.
 
 ### Testing

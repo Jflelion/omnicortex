@@ -1,11 +1,8 @@
 import requests
 
+from app.core.config import settings
 from app.core.exceptions import AIServiceUnavailableError
 from app.ai.llm.models import LLMResponse
-
-
-OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "qwen2.5:3b"
 
 
 class OllamaClient:
@@ -33,17 +30,17 @@ class OllamaClient:
 
         try:
             response = requests.post(
-                OLLAMA_URL,
+                f"{settings.OLLAMA_BASE_URL}/api/generate",
                 json={
-                    "model": OLLAMA_MODEL,
+                    "model": settings.LLM_MODEL,
                     "prompt": prompt,
                     "stream": False,
-                    "keep_alive": "30m",
+                    "keep_alive": settings.OLLAMA_KEEP_ALIVE,
                     "options": {
-                        "num_predict": 120,
+                        "num_predict": settings.LLM_MAX_TOKENS,
                     },
                 },
-                timeout=300,
+                timeout=settings.LLM_TIMEOUT_SECONDS,
             )
 
             response.raise_for_status()

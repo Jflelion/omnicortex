@@ -1,236 +1,139 @@
-Perfecto. Documentemos de forma profesional, no línea por línea.
-
-Crea o actualiza:
-
-```text
-README.md
-```
-
-con esta estructura:
-
-````markdown
 # OmniCortex Backend
 
-OmniCortex is a backend foundation for an AI SaaS platform built with FastAPI, PostgreSQL, Docker, SQLAlchemy, Alembic, JWT authentication, and role-based authorization.
+OmniCortex is a backend for a document intelligence platform. Users upload PDFs, the API extracts and indexes their content, and questions are answered with a local RAG pipeline (pgvector + Ollama) that returns the sources used.
 
-## Current Stack
+## Stack
 
 - FastAPI
-- PostgreSQL
-- Docker
-- SQLAlchemy
-- Alembic
-- Pydantic
-- PyJWT
-- Passlib + bcrypt
-- DBeaver
+- PostgreSQL 16 + pgvector (Docker)
+- SQLAlchemy + Alembic
+- Pydantic / pydantic-settings
+- PyJWT + Passlib (bcrypt)
+- PyMuPDF for text extraction
+- Ollama: `nomic-embed-text` (embeddings) and `qwen2.5:3b` (generation)
 
-## Current Features
+## Features
 
-- PostgreSQL database running in Docker
-- SQLAlchemy ORM models
-- Alembic migrations
-- Environment-based configuration with `.env`
-- Users and roles
-- Password hashing
-- JWT login
-- Protected routes
-- Role-based authorization
-- Soft delete and hard delete for users
-- Seed script for default roles
+- JWT authentication and role-based authorization (`admin`, `user`, `analyst`)
+- Public registration (always assigned the `user` role)
+- PDF upload with type and size validation
+- Text extraction, chunking with overlap and background embedding generation
+- Semantic search and hybrid retrieval (vector + keyword) with reranking
+- `/documents/ask`: grounded answers with auditable sources
+- Request IDs and per-stage timing of the RAG pipeline
+- `503 Service Unavailable` when Ollama is down or times out
 
 ## Project Structure
 
 ```text
 omnicortex/
 ├── app/
-│   ├── core/
-│   │   ├── config.py
-│   │   ├── security.py
-│   │   ├── jwt_handler.py
-│   │   └── permissions.py
-│   ├── database/
-│   │   ├── database.py
-│   │   └── seed.py
-│   ├── models/
-│   │   ├── role.py
-│   │   └── user.py
-│   ├── routers/
-│   │   ├── auth.py
-│   │   ├── roles.py
-│   │   └── users.py
-│   ├── schemas/
-│   │   ├── role.py
-│   │   └── user.py
+│   ├── ai/llm/           # LLM client (Ollama) and normalized response model
+│   ├── core/             # config, security, JWT, permissions, exceptions
+│   ├── database/         # session, seed, embed_chunks (re-index tool)
+│   ├── models/           # SQLAlchemy models
+│   ├── observability/    # logging, request ID, RAG tracing
+│   ├── routers/          # auth, users, roles, documents
+│   ├── schemas/          # Pydantic schemas
+│   ├── services/         # extraction, chunking, embeddings, retrieval, RAG
 │   └── main.py
-├── alembic/
-├── alembic.ini
+├── alembic/              # migrations
+├── docs/                 # architecture, decisions, changelog, roadmap
+├── scripts/              # manual checks
+├── tests/
 ├── docker-compose.yml
 ├── requirements.txt
-├── .env
-└── README.md
-````
-
-## Environment Variables
-
-Create a `.env` file in the project root:
-
-```env
-DATABASE_URL=postgresql://admin:admin123@localhost:5432/omnicortex_db
-SECRET_KEY=your_secure_secret_key
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
+├── requirements-dev.txt
+├── .env.example
+└── run.py
 ```
 
-## Running PostgreSQL
+## Setup
+
+### 1. Environment
+
+```powershell
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements-dev.txt
+copy .env.example .env
+```
+
+Edit `.env` and set at least `DATABASE_URL` and `SECRET_KEY`. Every other value has a default (see `app/core/config.py`).
+
+### 2. Database
 
 ```powershell
 docker compose up -d
-```
-
-Check the container:
-
-```powershell
-docker ps
-```
-
-## Running Migrations
-
-```powershell
 alembic upgrade head
-```
-
-Create a new migration:
-
-```powershell
-alembic revision --autogenerate -m "migration message"
-```
-
-## Seeding Default Roles
-
-```powershell
 python -m app.database.seed
 ```
 
-Default roles:
-
-* admin
-* user
-* analyst
-
-## Running the API
+### 3. Ollama
 
 ```powershell
-python -m uvicorn app.main:app --reload
+ollama pull nomic-embed-text
+ollama pull qwen2.5:3b
 ```
 
-Swagger documentation:
+### 4. Run the API
 
-```text
-http://127.0.0.1:8000/docs
+```powershell
+python run.py
 ```
 
-## Authentication Flow
+Swagger: http://127.0.0.1:8000/docs
 
-1. Create roles using the seed script.
-2. Create an admin user.
-3. Login using `/auth/login`.
-4. Copy the JWT access token.
-5. Use Swagger `Authorize`.
-6. Access protected routes.
+## Usage Flow
 
-## Authorization
+1. Register with `POST /users/`.
+2. Log in with `POST /auth/login` and use the token in Swagger `Authorize`.
+3. Upload a PDF with `POST /documents/upload`. Embeddings are generated in the background after the response.
+4. Ask with `POST /documents/ask` or search with `POST /documents/search`.
 
-OmniCortex currently uses role-based authorization.
+If Ollama was down during an upload, the chunks stay without embeddings. Index them later with:
 
-Example:
-
-```python
-Depends(require_roles(["admin"]))
+```powershell
+python -m app.database.embed_chunks
 ```
 
-Protected admin routes include:
-
-* `GET /users/`
-* `POST /roles/`
-* user update/deactivate/delete operations
-
-## Current API Modules
+## API
 
 ### Auth
 
-* `POST /auth/login`
-* `GET /auth/me`
+- `POST /auth/login`
+- `GET /auth/me`
 
 ### Users
 
-* `POST /users/`
-* `GET /users/`
-* `GET /users/{user_id}`
-* `PUT /users/{user_id}`
-* `PATCH /users/{user_id}/deactivate`
-* `PATCH /users/{user_id}/activate`
-* `DELETE /users/{user_id}`
+- `POST /users/` — public registration
+- `GET /users/{user_id}` — admin
+- `PUT /users/{user_id}` — admin (the only way to change a user's role)
+- `PATCH /users/{user_id}/deactivate` — admin
+- `PATCH /users/{user_id}/activate` — admin
+- `DELETE /users/{user_id}` — admin
 
 ### Roles
 
-* `POST /roles/`
-* `GET /roles/`
+- `POST /roles/` — admin
+- `GET /roles/`
+
+### Documents (owner only)
+
+- `POST /documents/upload`
+- `GET /documents/`
+- `GET /documents/{document_id}`
+- `GET /documents/{document_id}/chunks`
+- `DELETE /documents/{document_id}`
+- `POST /documents/search`
+- `POST /documents/ask`
 
 ## Development Notes
 
-* `.env` must be in the project root, not inside `venv`.
-* PostgreSQL must be running before starting the API.
-* Alembic now controls database schema changes.
-* Do not use `Base.metadata.create_all()` in `main.py`.
-* `users` and `roles` are managed through SQLAlchemy ORM models.
+- Alembic controls the schema. Do not use `Base.metadata.create_all()`.
+- Create migrations with `alembic revision --autogenerate -m "message"`.
+- Run tests with `pytest`.
 
 ## Roadmap
 
-### Phase 1 — Backend Foundation
-
-* Docker + PostgreSQL
-* FastAPI
-* SQLAlchemy
-* Alembic
-* JWT Auth
-* Role authorization
-
-### Phase 2 — Document System
-
-* Document model
-* File upload
-* User-document relationship
-* File metadata
-* Local storage
-
-### Phase 3 — AI Layer
-
-* Text extraction
-* Chunking
-* Embeddings
-* Vector search
-* RAG
-* Chat with documents
-
-### Phase 4 — Advanced Architecture
-
-* Service layer
-* Repository layer
-* Background tasks
-* Logging
-* Testing
-* Redis / workers
-
-### Phase 5 — Frontend
-
-* Next.js dashboard
-* Login UI
-* Document upload UI
-* Chat interface
-* Admin panel
-
-```
-
-Después de guardar el README, seguimos con **Documents Module**.
-```
+See [docs/ROADMAP.md](docs/ROADMAP.md).

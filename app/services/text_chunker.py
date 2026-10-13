@@ -1,7 +1,7 @@
 def chunk_text(
     text: str,
-    chunk_size: int = 1000,
-    overlap: int = 150
+    chunk_size: int,
+    overlap: int
 ) -> list[str]:
     """
     Split text into overlapping chunks.

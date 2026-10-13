@@ -26,7 +26,7 @@ from app.schemas.document import DocumentResponse
 from app.schemas.document_chunk import DocumentChunkResponse
 
 from app.schemas.search import SearchRequest, SearchResult
-from app.services.embedding_service import generate_embedding
+from app.services.retrieval_service import semantic_search
 
 from app.services.document_text_extractor import (
     extract_text_from_pdf
@@ -117,7 +117,9 @@ def upload_document(
     if extracted_text:
 
         chunks = chunk_text(
-            extracted_text
+            extracted_text,
+            chunk_size=settings.CHUNK_SIZE,
+            overlap=settings.CHUNK_OVERLAP
         )
 
         for index, chunk in enumerate(
@@ -377,32 +379,11 @@ def search_documents(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    query_embedding = generate_embedding(
-        search_request.query
-    )
-
-    results = (
-        db.query(
-            DocumentChunk.id.label("chunk_id"),
-            DocumentChunk.document_id,
-            DocumentChunk.chunk_index,
-            DocumentChunk.content,
-            DocumentChunk.embedding.cosine_distance(
-                query_embedding
-            ).label("distance")
-        )
-        .join(Document)
-        .filter(
-            Document.owner_id == current_user.id,
-            DocumentChunk.embedding.is_not(None)
-        )
-        .order_by(
-            DocumentChunk.embedding.cosine_distance(
-                query_embedding
-            )
-        )
-        .limit(search_request.limit)
-        .all()
+    results = semantic_search(
+        query=search_request.query,
+        user_id=current_user.id,
+        db=db,
+        limit=search_request.limit
     )
 
     return [

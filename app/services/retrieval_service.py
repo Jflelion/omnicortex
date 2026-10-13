@@ -1,6 +1,6 @@
 from typing import Any, NamedTuple
 from sqlalchemy import or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Query, Session
 
 from app.models.document import Document
 from app.models.document_chunk import DocumentChunk
@@ -26,34 +26,75 @@ def _to_retrieved_chunk(result: Any) -> RetrievedChunk:
         score=float(result.distance)
     )
 
-def search_relevant_chunks(
-    query: str,
-    user_id: int,
+def _chunk_query(
     db: Session,
-    limit: int = 5
-) -> list[RetrievedChunk]:
-    query_embedding = generate_embedding(query)
+    query_embedding: list[float],
+    user_id: int
+) -> Query[Any]:
+    """
+    Base query over the user's embedded chunks, ordered by cosine distance.
+    """
 
-    semantic_rows = (
+    distance = DocumentChunk.embedding.cosine_distance(
+        query_embedding
+    )
+
+    return (
         db.query(
             DocumentChunk.id.label("chunk_id"),
             DocumentChunk.document_id,
             DocumentChunk.chunk_index,
             DocumentChunk.content,
-            DocumentChunk.embedding.cosine_distance(
-                query_embedding
-            ).label("distance")
+            distance.label("distance")
         )
         .join(Document)
         .filter(
             Document.owner_id == user_id,
             DocumentChunk.embedding.is_not(None)
         )
-        .order_by(
-            DocumentChunk.embedding.cosine_distance(
-                query_embedding
-            )
-        )
+        .order_by(distance)
+    )
+
+
+def semantic_search(
+    query: str,
+    user_id: int,
+    db: Session,
+    limit: int = 5
+) -> list[RetrievedChunk]:
+    """
+    Pure vector search over the user's chunks.
+    """
+
+    query_embedding = generate_embedding(query)
+
+    rows = (
+        _chunk_query(db, query_embedding, user_id)
+        .limit(limit)
+        .all()
+    )
+
+    return [
+        _to_retrieved_chunk(row)
+        for row in rows
+    ]
+
+
+def search_relevant_chunks(
+    query: str,
+    user_id: int,
+    db: Session,
+    limit: int = 5
+) -> list[RetrievedChunk]:
+    """
+    Hybrid retrieval: vector search combined with a keyword filter,
+    merged and sorted by cosine distance.
+    """
+
+    query_embedding = generate_embedding(query)
+
+    semantic_rows = (
+        _chunk_query(db, query_embedding, user_id)
         .limit(limit * 2)
         .all()
     )
@@ -78,26 +119,8 @@ def search_relevant_chunks(
 
     if keyword_filters:
         keyword_rows = (
-            db.query(
-                DocumentChunk.id.label("chunk_id"),
-                DocumentChunk.document_id,
-                DocumentChunk.chunk_index,
-                DocumentChunk.content,
-                DocumentChunk.embedding.cosine_distance(
-                    query_embedding
-                ).label("distance")
-            )
-            .join(Document)
-            .filter(
-                Document.owner_id == user_id,
-                DocumentChunk.embedding.is_not(None),
-                or_(*keyword_filters)
-            )
-            .order_by(
-                DocumentChunk.embedding.cosine_distance(
-                    query_embedding
-                )
-            )
+            _chunk_query(db, query_embedding, user_id)
+            .filter(or_(*keyword_filters))
             .limit(limit * 2)
             .all()
         )

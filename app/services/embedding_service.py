@@ -1,22 +1,19 @@
 import requests
 
+from app.core.config import settings
 from app.core.exceptions import AIServiceUnavailableError
-
-
-OLLAMA_EMBEDDING_URL = "http://localhost:11434/api/embeddings"
-OLLAMA_EMBEDDING_MODEL = "nomic-embed-text"
 
 
 def generate_embedding(text: str) -> list[float]:
     try:
         response = requests.post(
-            OLLAMA_EMBEDDING_URL,
+            f"{settings.OLLAMA_BASE_URL}/api/embeddings",
             json={
-                "model": OLLAMA_EMBEDDING_MODEL,
+                "model": settings.EMBEDDING_MODEL,
                 "prompt": text,
-                "keep_alive": "30m",
+                "keep_alive": settings.OLLAMA_KEEP_ALIVE,
             },
-            timeout=60
+            timeout=settings.EMBEDDING_TIMEOUT_SECONDS
         )
 
         response.raise_for_status()
