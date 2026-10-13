@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Entornos
+venv/
+.venv/
+
+# Secretos
+.env
+
+# Datos de usuario
+uploads/
+
+# Editor / SO
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
