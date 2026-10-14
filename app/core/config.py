@@ -1,4 +1,7 @@
 from pathlib import Path
+from typing import Literal
+
+from pydantic import model_validator
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -20,6 +23,10 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_KEEP_ALIVE: str = "30m"
 
+    # "ollama" for local development, "anthropic" for the hosted demo.
+    LLM_PROVIDER: Literal["ollama", "anthropic"] = "ollama"
+    EMBEDDING_PROVIDER: Literal["ollama", "nomic"] = "ollama"
+
     LLM_MODEL: str = "qwen2.5:3b"
     LLM_MAX_TOKENS: int = 120
     LLM_TIMEOUT_SECONDS: int = 300
@@ -30,10 +37,28 @@ class Settings(BaseSettings):
     # Previous messages included in the prompt of a conversation turn.
     CONVERSATION_HISTORY_MESSAGES: int = 6
 
+    ANTHROPIC_API_KEY: str | None = None
+    ANTHROPIC_MODEL: str = "claude-haiku-5-5"
+    ANTHROPIC_MAX_TOKENS: int = 1024
+    ANTHROPIC_EFFORT: Literal["low", "medium", "high"] = "low"
+
+    NOMIC_API_KEY: str | None = None
+    NOMIC_EMBEDDING_MODEL: str = "nomic-embed-text-v1.5"
+
     HEALTH_CHECK_TIMEOUT_SECONDS: int = 3
 
     # Comma-separated list of allowed frontend origins.
     CORS_ORIGINS: str = "http://localhost:3000,http://localhost:5173"
+
+    @model_validator(mode="after")
+    def _require_provider_keys(self) -> "Settings":
+        if self.LLM_PROVIDER == "anthropic" and not self.ANTHROPIC_API_KEY:
+            raise ValueError("LLM_PROVIDER=anthropic requires ANTHROPIC_API_KEY")
+
+        if self.EMBEDDING_PROVIDER == "nomic" and not self.NOMIC_API_KEY:
+            raise ValueError("EMBEDDING_PROVIDER=nomic requires NOMIC_API_KEY")
+
+        return self
 
     @property
     def cors_origins_list(self) -> list[str]:

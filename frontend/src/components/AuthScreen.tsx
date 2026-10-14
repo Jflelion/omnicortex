@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 
 import { api, ApiError } from '../api/client'
 import { Logo } from './Logo'
@@ -7,6 +7,33 @@ type Mode = 'login' | 'register'
 
 interface Props {
   onAuthenticated: (token: string) => void
+}
+
+// The hosted demo API sleeps when idle; tell the visitor why the first
+// request is slow instead of letting it look broken.
+const WAKE_NOTICE_DELAY_MS = 1500
+
+function useServerWaking(): boolean {
+  const [waking, setWaking] = useState(false)
+
+  useEffect(() => {
+    let answered = false
+    const timer = window.setTimeout(() => {
+      if (!answered) setWaking(true)
+    }, WAKE_NOTICE_DELAY_MS)
+
+    const done = () => {
+      answered = true
+      window.clearTimeout(timer)
+      setWaking(false)
+    }
+
+    api.ping().then(done, done)
+
+    return () => window.clearTimeout(timer)
+  }, [])
+
+  return waking
 }
 
 const FEATURES = [
@@ -22,6 +49,7 @@ export function AuthScreen({ onAuthenticated }: Props) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
+  const waking = useServerWaking()
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
@@ -103,6 +131,13 @@ export function AuthScreen({ onAuthenticated }: Props) {
               {mode === 'login' ? 'Regístrate' : 'Inicia sesión'}
             </button>
           </p>
+
+          {waking && (
+            <p role="status" className="mt-6 flex items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">
+              <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-amber-500" />
+              Despertando el servidor de la demo… puede tardar hasta un minuto.
+            </p>
+          )}
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-4">
             <label className="block">

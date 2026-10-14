@@ -5,7 +5,7 @@ from app.database.database import SessionLocal
 from app.models.document import Document, DocumentStatus
 from app.models.document_chunk import DocumentChunk
 from app.observability.logger import get_logger
-from app.services.embedding_service import generate_embedding
+from app.services.embedding_service import generate_document_embeddings
 
 
 logger = get_logger(__name__)
@@ -38,8 +38,12 @@ def embed_document_chunks(
         .all()
     )
 
-    for chunk in chunks:
-        chunk.embedding = generate_embedding(chunk.content)
+    embeddings = generate_document_embeddings(
+        [chunk.content for chunk in chunks]
+    )
+
+    for chunk, embedding in zip(chunks, embeddings, strict=True):
+        chunk.embedding = embedding
 
     db.commit()
 

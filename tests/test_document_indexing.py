@@ -40,8 +40,8 @@ def test_new_documents_start_processing(document):
 def test_successful_indexing_marks_document_ready(db, document, monkeypatch):
     monkeypatch.setattr(
         document_indexing_service,
-        "generate_embedding",
-        lambda _text: [0.1] * 768
+        "generate_document_embeddings",
+        lambda texts: [[0.1] * 768 for _ in texts]
     )
 
     index_document(db, document.id)
@@ -61,7 +61,7 @@ def test_failed_indexing_marks_document_failed(db, document, monkeypatch, error)
     def _raise(_text):
         raise error
 
-    monkeypatch.setattr(document_indexing_service, "generate_embedding", _raise)
+    monkeypatch.setattr(document_indexing_service, "generate_document_embeddings", _raise)
 
     index_document(db, document.id)
 
@@ -75,8 +75,8 @@ def test_failed_indexing_marks_document_failed(db, document, monkeypatch, error)
 def test_indexing_a_deleted_document_is_a_no_op(db, monkeypatch):
     monkeypatch.setattr(
         document_indexing_service,
-        "generate_embedding",
-        lambda _text: [0.1] * 768
+        "generate_document_embeddings",
+        lambda texts: [[0.1] * 768 for _ in texts]
     )
 
     index_document(db, 999)

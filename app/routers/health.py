@@ -24,6 +24,16 @@ def _check_database(db: Session) -> dict[str, str]:
 
 
 def _check_ollama() -> dict[str, str | list[str]]:
+    # Only the models of the providers actually set to Ollama are required.
+    required = [
+        model
+        for provider, model in (
+            (settings.LLM_PROVIDER, settings.LLM_MODEL),
+            (settings.EMBEDDING_PROVIDER, settings.EMBEDDING_MODEL),
+        )
+        if provider == "ollama"
+    ]
+
     try:
         response = requests.get(
             f"{settings.OLLAMA_BASE_URL}/api/tags",
@@ -43,7 +53,7 @@ def _check_ollama() -> dict[str, str | list[str]]:
     # Ollama lists untagged models as "<name>:latest".
     missing = [
         model
-        for model in (settings.LLM_MODEL, settings.EMBEDDING_MODEL)
+        for model in required
         if model not in available and f"{model}:latest" not in available
     ]
 
@@ -60,10 +70,18 @@ def health(db: Session = Depends(get_db)) -> JSONResponse:
     Returns 503 if any of them is unavailable.
     """
 
-    checks = {
-        "database": _check_database(db),
-        "ollama": _check_ollama(),
-    }
+    checks = {"database": _check_database(db)}
+
+    if "ollama" in (settings.LLM_PROVIDER, settings.EMBEDDING_PROVIDER):
+        checks["ollama"] = _check_ollama()
+
+    # Hosted providers are not called here (each call costs money); the
+    # settings already refuse to start without their API keys.
+    if settings.LLM_PROVIDER == "anthropic":
+        checks["anthropic"] = {"status": "ok", "model": settings.ANTHROPIC_MODEL}
+
+    if settings.EMBEDDING_PROVIDER == "nomic":
+        checks["nomic"] = {"status": "ok", "model": settings.NOMIC_EMBEDDING_MODEL}
 
     healthy = all(
         check["status"] == "ok"

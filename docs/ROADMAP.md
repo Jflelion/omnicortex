@@ -203,6 +203,7 @@ Estado: en desarrollo (React + Vite en lugar de Next.js: no hace falta SSR para 
 ## Fase 12 — Production Readiness
 
 - [x] CI (tests, migraciones, lint, build, imágenes Docker).
+- [x] Deployment (Render + Neon, ver `docs/DEPLOY.md`).
 - CD.
 - Deployment.
 - Secrets management.

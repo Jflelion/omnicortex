@@ -22,6 +22,7 @@ OmniCortex is a document intelligence platform (FastAPI backend + React frontend
 - PyMuPDF for text extraction
 - Ollama: `nomic-embed-text` (embeddings) and `qwen2.5:3b` (generation)
 - Frontend: React 19 + TypeScript + Vite + Tailwind CSS
+- Public demo: Claude Haiku (Anthropic API) + Nomic embeddings, on Render + Neon — switched by configuration (`LLM_PROVIDER`, `EMBEDDING_PROVIDER`)
 
 ## Features
 
@@ -181,6 +182,10 @@ npm run dev        # http://localhost:5173
 ```
 
 In development, Vite proxies `/api` to the backend at `http://localhost:8000` (override with `VITE_PROXY_TARGET`), so no CORS setup is needed. `npm run build` type-checks and builds to `frontend/dist`.
+
+## Deployment
+
+The public demo runs on Render (API + static frontend) with Neon for PostgreSQL + pgvector, Claude Haiku as the LLM and Nomic's API for embeddings. Step-by-step guide: [docs/DEPLOY.md](docs/DEPLOY.md). Blueprint: [render.yaml](render.yaml).
 
 ## Development Notes
 

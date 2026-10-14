@@ -1,0 +1,45 @@
+# Render Blueprint for the public demo: API (Docker, free plan) + frontend
+# (static site). The database lives on Neon. See docs/DEPLOY.md.
+#
+# The URLs below assume Render keeps the service names as subdomains. If it
+# adds a suffix (name already taken), update VITE_API_URL and CORS_ORIGINS.
+services:
+  - type: web
+    name: omnicortex-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: LLM_PROVIDER
+        value: anthropic
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-haiku-5-5
+      - key: EMBEDDING_PROVIDER
+        value: nomic
+      - key: NOMIC_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        value: https://omnicortex.onrender.com
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "120"
+
+  - type: web
+    name: omnicortex
+    runtime: static
+    buildCommand: cd frontend && npm ci && npm run build
+    staticPublishPath: frontend/dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://omnicortex-api.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

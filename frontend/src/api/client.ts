@@ -102,6 +102,9 @@ export const api = {
 
   me: () => request<User>('/auth/me'),
 
+  /** Resolves once the API answers at all (it may report itself degraded). */
+  ping: () => fetch(`${API_URL}/health`).then(() => undefined),
+
   listDocuments: () => request<DocumentItem[]>('/documents/'),
 
   uploadDocument: (file: File) => {

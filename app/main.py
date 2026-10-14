@@ -42,8 +42,9 @@ def ai_service_unavailable_handler(
         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
         content={
             "detail": (
-                f"{exc} (Ollama). "
-                "Check that Ollama is running and try again."
+                f"{exc}. Check that Ollama is running and try again."
+                if "ollama" in (settings.LLM_PROVIDER, settings.EMBEDDING_PROVIDER)
+                else f"{exc}. Please try again in a moment."
             )
         }
     )

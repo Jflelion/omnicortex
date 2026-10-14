@@ -1,5 +1,7 @@
+from app.ai.llm.anthropic_client import AnthropicClient
 from app.ai.llm.client import OllamaClient
 from app.ai.llm.models import LLMResponse
+from app.core.config import settings
 
 
 class LLMService:
@@ -11,7 +13,11 @@ class LLMService:
     """
 
     def __init__(self) -> None:
-        self._client = OllamaClient()
+        self._client: OllamaClient | AnthropicClient = (
+            AnthropicClient()
+            if settings.LLM_PROVIDER == "anthropic"
+            else OllamaClient()
+        )
 
     def generate(
         self,
