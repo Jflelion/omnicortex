@@ -185,7 +185,7 @@ In development, Vite proxies `/api` to the backend at `http://localhost:8000` (o
 
 ## Deployment
 
-The public demo runs on Render (API + static frontend) with Neon for PostgreSQL + pgvector and Gemini (free tier) for answers (`gemini-2.5-flash-lite`) and embeddings (`gemini-embedding-2`, 768 dims). The whole stack is free. Step-by-step guide: [docs/DEPLOY.md](docs/DEPLOY.md). Blueprint: [render.yaml](render.yaml).
+The public demo runs on Render (API + static frontend) with Neon for PostgreSQL + pgvector and Gemini (free tier) for answers (`gemini-3.1-flash-lite`) and embeddings (`gemini-embedding-2`, 768 dims). The whole stack is free. Step-by-step guide: [docs/DEPLOY.md](docs/DEPLOY.md). Blueprint: [render.yaml](render.yaml).
 
 ## Development Notes
 

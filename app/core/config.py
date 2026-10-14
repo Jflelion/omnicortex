@@ -38,7 +38,7 @@ class Settings(BaseSettings):
     CONVERSATION_HISTORY_MESSAGES: int = 6
 
     GEMINI_API_KEY: str | None = None
-    GEMINI_LLM_MODEL: str = "gemini-2.5-flash-lite"
+    GEMINI_LLM_MODEL: str = "gemini-3.1-flash-lite"
     GEMINI_MAX_TOKENS: int = 1024
     GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-2"
 

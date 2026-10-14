@@ -58,6 +58,7 @@ class GeminiClient:
         text = "".join(
             part.get("text", "")
             for part in candidate.get("content", {}).get("parts", [])
+            if not part.get("thought")
         ).strip() or BLOCKED_TEXT
 
         usage = data.get("usageMetadata", {})

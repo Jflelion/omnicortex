@@ -407,7 +407,7 @@ En local, OmniCortex usa Ollama. Una demo pública con Ollama necesitaría un se
 
 ### Decisión
 
-- `LLM_PROVIDER`: `ollama` (local) o `gemini` (`gemini-2.5-flash-lite`, plan gratuito).
+- `LLM_PROVIDER`: `ollama` (local) o `gemini` (`gemini-3.1-flash-lite`, plan gratuito).
 - `EMBEDDING_PROVIDER`: `ollama` o `gemini` (`gemini-embedding-2` de Google, reducido a 768 dimensiones con `outputDimensionality`).
 - Ambos clientes devuelven las mismas estructuras y convierten los fallos del proveedor en `AIServiceUnavailableError` (HTTP 503), así que el pipeline RAG no cambia.
 - Con Gemini, chunks y consultas llevan el prefijo de tarea que pide el modelo (`title: none | text:` y `task: search result | query:`) y se envían por lotes de 32. Si la API devuelve vectores de otro tamaño, se rechazan antes de llegar a la columna `vector(768)`.

@@ -25,7 +25,7 @@ def gemini_reply(*texts: str, finish_reason: str = "STOP") -> dict:
             "finishReason": finish_reason,
         }],
         "usageMetadata": {"promptTokenCount": 120, "candidatesTokenCount": 15},
-        "modelVersion": "gemini-2.5-flash-lite",
+        "modelVersion": "gemini-3.1-flash-lite",
     }
 
 
@@ -56,6 +56,17 @@ def test_gemini_llm_returns_text_and_usage(gemini_llm):
     body = post.call_args.kwargs["json"]
     assert body["contents"][0]["parts"][0]["text"] == "PREGUNTA"
     assert body["generationConfig"]["maxOutputTokens"] == settings.GEMINI_MAX_TOKENS
+
+
+def test_gemini_llm_ignores_thought_parts(gemini_llm):
+    client, _, reply = gemini_llm
+    payload = gemini_reply("Laura Gomez")
+    payload["candidates"][0]["content"]["parts"].insert(
+        0, {"text": "razonamiento interno", "thought": True}
+    )
+    reply(payload)
+
+    assert client.generate("x").text == "Laura Gomez"
 
 
 def test_gemini_llm_blocked_prompt_returns_fixed_text(gemini_llm):

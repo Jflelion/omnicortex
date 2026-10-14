@@ -7,7 +7,7 @@ La demo usa servicios hospedados en lugar de Ollama, para no necesitar GPU:
 | API (FastAPI, Docker) | Render, plan Free | 0 USD |
 | Frontend (React) | Render, Static Site | 0 USD |
 | PostgreSQL + pgvector | Neon, plan Free | 0 USD |
-| LLM | Gemini API, `gemini-2.5-flash-lite` | 0 USD (plan gratuito) |
+| LLM | Gemini API, `gemini-3.1-flash-lite` | 0 USD (plan gratuito) |
 | Embeddings | Gemini API, `gemini-embedding-2` (reducido a 768 dims) | 0 USD (plan gratuito) |
 
 Todo el stack es gratuito y solo necesita **una** clave de API. El cambio de proveedor es solo configuración (`LLM_PROVIDER=gemini`, `EMBEDDING_PROVIDER=gemini`); en local se sigue usando Ollama. Ver ADR-012 en [ENGINEERING_DECISIONS.md](ENGINEERING_DECISIONS.md).
