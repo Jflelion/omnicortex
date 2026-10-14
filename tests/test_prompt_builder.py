@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from app.services.prompt_builder import build_rag_prompt
+from app.services.prompt_builder import HistoryTurn, build_rag_prompt
 
 
 def test_prompt_contains_question_and_numbered_chunks():
@@ -22,3 +22,19 @@ def test_prompt_includes_fallback_instruction():
     prompt = build_rag_prompt("pregunta", [])
 
     assert "No tengo suficiente información" in prompt
+
+
+def test_prompt_includes_history_before_question():
+    history = [
+        HistoryTurn("user", "¿Quién es la gerente?"),
+        HistoryTurn("assistant", "Ana Pérez."),
+    ]
+
+    prompt = build_rag_prompt("¿Y su teléfono?", [], history)
+
+    assert "Usuario: ¿Quién es la gerente?\nAsistente: Ana Pérez." in prompt
+    assert prompt.index("CONTEXTO:") < prompt.index("HISTORIAL") < prompt.index("PREGUNTA:")
+
+
+def test_prompt_without_history_has_no_history_section():
+    assert "HISTORIAL" not in build_rag_prompt("pregunta", [])

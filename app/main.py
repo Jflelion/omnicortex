@@ -5,7 +5,7 @@ from fastapi.responses import JSONResponse
 from app.core.config import settings
 from app.core.exceptions import AIServiceUnavailableError
 from app.observability.logger import configure_logging
-from app.routers import auth, documents, health, roles, users
+from app.routers import auth, conversations, documents, health, roles, users
 from app.observability.request_id_middleware import RequestIdMiddleware
 
 configure_logging()
@@ -22,6 +22,7 @@ app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(roles.router)
 app.include_router(documents.router)
+app.include_router(conversations.router)
 app.add_middleware(RequestIdMiddleware)
 app.add_middleware(
     CORSMiddleware,

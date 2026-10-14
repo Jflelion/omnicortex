@@ -57,16 +57,7 @@ def rerank_chunks(
         )
 
         reranked.append(
-
-            RetrievedChunk(
-                chunk_id=chunk.chunk_id,
-                document_id=chunk.document_id,
-                chunk_index=chunk.chunk_index,
-                content=chunk.content,
-                distance=chunk.distance,
-                score=final_score
-            )
-
+            chunk._replace(score=final_score)
         )
 
     return sorted(

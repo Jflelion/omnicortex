@@ -14,6 +14,7 @@ class RetrievedChunk(NamedTuple):
     content: str
     distance: float
     score: float
+    filename: str = ""
 
 
 def _to_retrieved_chunk(result: Any) -> RetrievedChunk:
@@ -23,7 +24,8 @@ def _to_retrieved_chunk(result: Any) -> RetrievedChunk:
         chunk_index=int(result.chunk_index),
         content=str(result.content),
         distance=float(result.distance),
-        score=float(result.distance)
+        score=float(result.distance),
+        filename=str(result.filename)
     )
 
 def _chunk_query(
@@ -45,6 +47,7 @@ def _chunk_query(
             DocumentChunk.document_id,
             DocumentChunk.chunk_index,
             DocumentChunk.content,
+            Document.filename,
             distance.label("distance")
         )
         .join(Document)

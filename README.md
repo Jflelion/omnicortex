@@ -22,6 +22,7 @@ OmniCortex is a backend for a document intelligence platform. Users upload PDFs,
 - Cascade deletes: removing a document or user removes its chunks and stored files
 - Semantic search and hybrid retrieval (vector + keyword) with reranking
 - `/documents/ask`: grounded answers with auditable sources
+- Conversations: persistent chat history, follow-up questions resolved with previous turns, automatic titles
 - Request IDs and per-stage timing of the RAG pipeline
 - `/health` endpoint and configurable CORS
 - Dockerfile + docker-compose (API + Postgres)
@@ -143,6 +144,15 @@ python -m app.database.embed_chunks
 - `POST /documents/{document_id}/reindex`
 - `POST /documents/search`
 - `POST /documents/ask`
+
+### Conversations (owner only)
+
+- `POST /conversations/`
+- `GET /conversations/` — most recent first
+- `GET /conversations/{conversation_id}` — with messages and their sources
+- `PATCH /conversations/{conversation_id}` — rename
+- `DELETE /conversations/{conversation_id}`
+- `POST /conversations/{conversation_id}/messages` — ask inside the conversation
 
 ## Development Notes
 

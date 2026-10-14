@@ -1,9 +1,22 @@
-from typing import Any
+from collections.abc import Sequence
+from typing import Any, NamedTuple
+
+
+class HistoryTurn(NamedTuple):
+    role: str
+    content: str
+
+
+ROLE_LABELS = {
+    "user": "Usuario",
+    "assistant": "Asistente",
+}
 
 
 def build_rag_prompt(
     question: str,
-    chunks: list[Any]
+    chunks: list[Any],
+    history: Sequence[HistoryTurn] = ()
 ) -> str:
     context_parts: list[str] = []
 
@@ -13,6 +26,19 @@ def build_rag_prompt(
         )
 
     context = "\n\n".join(context_parts)
+
+    history_section = ""
+
+    if history:
+        history_lines = "\n".join(
+            f"{ROLE_LABELS.get(turn.role, turn.role)}: {turn.content}"
+            for turn in history
+        )
+
+        history_section = f"""
+HISTORIAL DE LA CONVERSACIÓN (úsalo solo para entender a qué se refiere la pregunta):
+{history_lines}
+"""
 
     return f"""
 Eres un asistente de IA especializado en responder preguntas usando documentos.
@@ -25,7 +51,7 @@ Si la respuesta no aparece en el contexto, responde:
 
 CONTEXTO:
 {context}
-
+{history_section}
 PREGUNTA:
 {question}
 

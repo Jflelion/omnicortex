@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     EMBEDDING_MODEL: str = "nomic-embed-text"
     EMBEDDING_TIMEOUT_SECONDS: int = 60
 
+    # Previous messages included in the prompt of a conversation turn.
+    CONVERSATION_HISTORY_MESSAGES: int = 6
+
     HEALTH_CHECK_TIMEOUT_SECONDS: int = 3
 
     # Comma-separated list of allowed frontend origins.

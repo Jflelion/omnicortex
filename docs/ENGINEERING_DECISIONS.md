@@ -372,3 +372,28 @@ Grafana.
 LangSmith.
 Sentry.
 Los servicios importantes deberán usar logging y temporizadores consistentes.
+
+---
+
+## ADR-011 — Contexto conversacional sin reescritura de la pregunta
+
+### Contexto
+
+En una conversación, las preguntas de seguimiento ("¿y su teléfono?") no contienen las palabras necesarias para recuperar los chunks correctos.
+
+### Decisión
+
+- El prompt incluye los últimos `CONVERSATION_HISTORY_MESSAGES` mensajes.
+- La consulta de retrieval y reranking concatena la pregunta anterior del usuario con la actual.
+- La pregunta y la respuesta se guardan juntas solo cuando la respuesta se genera; si Ollama falla, la conversación no cambia.
+- Las fuentes se guardan como JSON en el mensaje, para que la respuesta siga siendo auditable aunque el documento se elimine.
+
+### Alternativas consideradas
+
+- Reescribir la pregunta con el LLM (standalone question). Da mejores consultas, pero añade una segunda llamada al modelo por turno, lo que con `qwen2.5:3b` en local duplica la latencia.
+
+### Consecuencias
+
+- Cero llamadas extra al modelo por turno.
+- La consulta de retrieval es más ruidosa cuando el usuario cambia de tema; se puede sustituir por reescritura con LLM sin cambiar la API.
+

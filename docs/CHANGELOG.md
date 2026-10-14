@@ -24,6 +24,9 @@ El formato se inspira en Keep a Changelog y el proyecto seguirá versionado sem�
 
 - Estado de procesamiento en documentos (`processing`, `ready`, `failed`) y `error_message`.
 - `POST /documents/{id}/reindex` para reintentar documentos fallidos.
+- Conversaciones (`/conversations`) con historial persistente, contexto de los últimos `CONVERSATION_HISTORY_MESSAGES` mensajes y título automático.
+- Las fuentes de cada respuesta se guardan con el mensaje e incluyen el nombre del archivo.
+- Validación de `question` (1–2000 caracteres) y `limit` (1–20) en las preguntas.
 - Borrado en cascada (`ON DELETE CASCADE`) de usuario → documentos → chunks; los archivos subidos también se eliminan.
 
 ### Changed

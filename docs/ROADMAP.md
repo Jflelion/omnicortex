@@ -122,13 +122,16 @@ Estado: en desarrollo.
 
 ## Fase 6 — Conversational RAG
 
-- Conversaciones.
-- Mensajes.
-- Historial.
-- Memoria.
-- Contexto conversacional.
-- Títulos automáticos.
-- Resumen de conversaciones.
+Estado: en desarrollo.
+
+- [x] Conversaciones.
+- [x] Mensajes.
+- [x] Historial.
+- [ ] Memoria.
+- [x] Contexto conversacional (últimos N mensajes en el prompt y en la consulta de retrieval).
+- [x] Títulos automáticos (a partir de la primera pregunta).
+- [ ] Resumen de conversaciones.
+- [ ] Reescritura de la pregunta con el LLM.
 
 ---
 
