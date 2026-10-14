@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
-from app.core.exceptions import AIServiceUnavailableError
+from app.core.exceptions import AIRateLimitError, AIServiceUnavailableError
 from app.observability.logger import configure_logging
 from app.routers import auth, conversations, documents, health, roles, users
 from app.observability.request_id_middleware import RequestIdMiddleware
@@ -31,6 +31,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(AIRateLimitError)
+def ai_rate_limit_handler(
+    request: Request,
+    exc: AIRateLimitError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        headers={"Retry-After": "60"},
+        content={
+            "detail": f"{exc}. Please try again in a minute."
+        }
+    )
 
 
 @app.exception_handler(AIServiceUnavailableError)

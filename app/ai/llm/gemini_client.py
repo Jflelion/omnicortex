@@ -1,16 +1,9 @@
 import time
 
-import requests
-
+from app.ai.gemini_http import GEMINI_API_URL, post_gemini
 from app.ai.llm.models import LLMResponse
 from app.core.config import settings
-from app.core.exceptions import AIServiceUnavailableError
-from app.observability.logger import get_logger
 
-
-logger = get_logger(__name__)
-
-GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta"
 
 BLOCKED_TEXT = "No puedo responder a esa solicitud."
 
@@ -19,7 +12,8 @@ class GeminiClient:
     """
     Client for Gemini's generateContent API, used for the public demo
     (``LLM_PROVIDER=gemini``). Mirrors OllamaClient: any provider failure
-    (network, quota, invalid key) becomes AIServiceUnavailableError (503).
+    (network, quota, invalid key) becomes AIServiceUnavailableError; see
+    app.ai.gemini_http for retries and logging.
     """
 
     def generate(
@@ -28,27 +22,17 @@ class GeminiClient:
     ) -> LLMResponse:
         started = time.perf_counter_ns()
 
-        try:
-            response = requests.post(
-                f"{GEMINI_API_URL}/models/{settings.GEMINI_LLM_MODEL}:generateContent",
-                headers={"x-goog-api-key": settings.GEMINI_API_KEY or ""},
-                json={
-                    "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-                    "generationConfig": {
-                        "maxOutputTokens": settings.GEMINI_MAX_TOKENS,
-                    },
+        response = post_gemini(
+            f"{GEMINI_API_URL}/models/{settings.GEMINI_LLM_MODEL}:generateContent",
+            {
+                "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+                "generationConfig": {
+                    "maxOutputTokens": settings.GEMINI_MAX_TOKENS,
                 },
-                timeout=settings.LLM_TIMEOUT_SECONDS,
-            )
-
-            response.raise_for_status()
-
-        except requests.RequestException as error:
-            logger.warning("Gemini API unavailable: %s", type(error).__name__)
-
-            raise AIServiceUnavailableError(
-                "Language model service is unavailable"
-            ) from error
+            },
+            timeout=settings.LLM_TIMEOUT_SECONDS,
+            unavailable_message="Language model service is unavailable",
+        )
 
         data = response.json()
 

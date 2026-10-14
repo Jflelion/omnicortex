@@ -13,11 +13,11 @@ stay comparable.
 
 import requests
 
+from app.ai.gemini_http import GEMINI_API_URL, post_gemini
 from app.core.config import settings
 from app.core.exceptions import AIServiceUnavailableError
 
 
-GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta"
 EMBEDDING_DIMENSIONS = 768
 
 # Texts sent per request to the hosted API.
@@ -88,29 +88,21 @@ def _gemini_embeddings(texts: list[str]) -> list[list[float]]:
 
     model = f"models/{settings.GEMINI_EMBEDDING_MODEL}"
 
-    try:
-        response = requests.post(
-            f"{GEMINI_API_URL}/{model}:batchEmbedContents",
-            headers={"x-goog-api-key": settings.GEMINI_API_KEY or ""},
-            json={
-                "requests": [
-                    {
-                        "model": model,
-                        "content": {"parts": [{"text": text}]},
-                        "outputDimensionality": EMBEDDING_DIMENSIONS,
-                    }
-                    for text in texts
-                ]
-            },
-            timeout=settings.EMBEDDING_TIMEOUT_SECONDS
-        )
-
-        response.raise_for_status()
-
-    except requests.RequestException as error:
-        raise AIServiceUnavailableError(
-            "Embedding service is unavailable"
-        ) from error
+    response = post_gemini(
+        f"{GEMINI_API_URL}/{model}:batchEmbedContents",
+        {
+            "requests": [
+                {
+                    "model": model,
+                    "content": {"parts": [{"text": text}]},
+                    "outputDimensionality": EMBEDDING_DIMENSIONS,
+                }
+                for text in texts
+            ]
+        },
+        timeout=settings.EMBEDDING_TIMEOUT_SECONDS,
+        unavailable_message="Embedding service is unavailable",
+    )
 
     embeddings = [
         item["values"]

@@ -41,6 +41,8 @@ class Settings(BaseSettings):
     GEMINI_LLM_MODEL: str = "gemini-3.1-flash-lite"
     GEMINI_MAX_TOKENS: int = 1024
     GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-2"
+    # Extra attempts after a transient Gemini failure (429/5xx/network).
+    GEMINI_MAX_RETRIES: int = 2
 
     HEALTH_CHECK_TIMEOUT_SECONDS: int = 3
 

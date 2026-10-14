@@ -23,6 +23,12 @@ from app.models.user import User
 TEST_PASSWORD = "secret123"
 
 
+@pytest.fixture(autouse=True)
+def no_retry_sleep(monkeypatch):
+    # Gemini retries back off with time.sleep; tests must not wait.
+    monkeypatch.setattr("app.ai.gemini_http.time.sleep", lambda seconds: None)
+
+
 @pytest.fixture
 def db() -> Iterator[Session]:
     # SQLite accepts the pgvector VECTOR(768) column type name, so the

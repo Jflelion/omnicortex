@@ -4,7 +4,7 @@ import pytest
 import requests
 from pydantic import ValidationError
 
-from app.ai.llm import gemini_client
+from app.ai import gemini_http
 from app.ai.llm.gemini_client import BLOCKED_TEXT, GeminiClient
 from app.core.config import Settings, settings
 from app.core.exceptions import AIServiceUnavailableError
@@ -33,7 +33,7 @@ def gemini_reply(*texts: str, finish_reason: str = "STOP") -> dict:
 def gemini_llm(monkeypatch):
     monkeypatch.setattr(settings, "GEMINI_API_KEY", "g-test")
     post = MagicMock()
-    monkeypatch.setattr(gemini_client.requests, "post", post)
+    monkeypatch.setattr(gemini_http.requests, "post", post)
 
     def _reply(payload: dict) -> None:
         post.return_value = MagicMock(json=MagicMock(return_value=payload))
