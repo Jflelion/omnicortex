@@ -148,6 +148,13 @@ export function AuthScreen({ onAuthenticated }: Props) {
                 onChange={(e) => setUsername(e.target.value)}
                 autoComplete="username"
                 required
+                {...(mode === 'register' && {
+                  minLength: 3,
+                  maxLength: 50,
+                  // Browsers compile this with the "v" flag, where "-" must be escaped.
+                  pattern: String.raw`[A-Za-z0-9_.\-]+`,
+                  title: 'De 3 a 50 caracteres: letras, números, punto, guion o guion bajo',
+                })}
               />
             </label>
 
@@ -174,6 +181,7 @@ export function AuthScreen({ onAuthenticated }: Props) {
                 onChange={(e) => setPassword(e.target.value)}
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                 required
+                {...(mode === 'register' && { minLength: 8, maxLength: 72 })}
               />
             </label>
 

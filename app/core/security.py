@@ -7,11 +7,6 @@ from passlib.context import CryptContext
 from app.core.jwt_handler import decode_jwt, encode_jwt
 
 
-settings.SECRET_KEY
-settings.ALGORITHM
-settings.ACCESS_TOKEN_EXPIRE_MINUTES
-
-
 pwd_context = CryptContext(
     schemes=["bcrypt"],
     deprecated="auto"

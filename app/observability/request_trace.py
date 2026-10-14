@@ -1,7 +1,6 @@
 from time import perf_counter
 from uuid import uuid4
 
-from pymupdf import name
 from app.observability.request_context import get_request_id
 from app.observability.logger import get_logger
 
@@ -106,19 +105,22 @@ class RequestTrace:
         self,
         name: str,
         value: str | int | float | bool,
-            ) -> None:
+    ) -> None:
         """
         Attach a metric or metadata value to the trace.
 
         Args:
-        name: Unique metric name.
-        value: Serializable metric value.
+            name: Unique metric name.
+            value: Serializable metric value.
+
+        Raises:
+            ValueError: If the metric name is empty.
         """
 
-    if not name.strip():
-        raise ValueError(
-            "Metric name cannot be empty."
-        )
+        if not name.strip():
+            raise ValueError(
+                "Metric name cannot be empty."
+            )
 
         self._metrics[name] = value
     

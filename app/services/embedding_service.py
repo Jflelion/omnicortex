@@ -63,10 +63,10 @@ def generate_document_embeddings(texts: list[str]) -> list[list[float]]:
 def _ollama_embedding(text: str) -> list[float]:
     try:
         response = requests.post(
-            f"{settings.OLLAMA_BASE_URL}/api/embeddings",
+            f"{settings.OLLAMA_BASE_URL}/api/embed",
             json={
                 "model": settings.EMBEDDING_MODEL,
-                "prompt": text,
+                "input": text,
                 "keep_alive": settings.OLLAMA_KEEP_ALIVE,
             },
             timeout=settings.EMBEDDING_TIMEOUT_SECONDS
@@ -79,7 +79,8 @@ def _ollama_embedding(text: str) -> list[float]:
             "Embedding service is unavailable"
         ) from error
 
-    return response.json()["embedding"]
+    # /api/embed returns one (normalized) vector per input.
+    return response.json()["embeddings"][0]
 
 
 def _gemini_embeddings(texts: list[str]) -> list[list[float]]:
