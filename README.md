@@ -197,3 +197,7 @@ The public demo runs on Render (API + static frontend) with Neon for PostgreSQL 
 ## Roadmap
 
 See [docs/ROADMAP.md](docs/ROADMAP.md).
+
+## License
+
+Released under the [MIT License](LICENSE).
