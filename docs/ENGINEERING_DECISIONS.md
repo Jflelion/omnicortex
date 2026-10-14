@@ -408,18 +408,20 @@ En local, OmniCortex usa Ollama. Una demo pública con Ollama necesitaría un se
 ### Decisión
 
 - `LLM_PROVIDER`: `ollama` (local) o `anthropic` (Claude Haiku 5.5 con esfuerzo `low`).
-- `EMBEDDING_PROVIDER`: `ollama` o `nomic` (API hospedada de Nomic con `nomic-embed-text-v1.5`).
+- `EMBEDDING_PROVIDER`: `ollama` o `gemini` (`gemini-embedding-2` de Google, reducido a 768 dimensiones con `outputDimensionality`).
 - Ambos clientes devuelven las mismas estructuras y convierten los fallos del proveedor en `AIServiceUnavailableError` (HTTP 503), así que el pipeline RAG no cambia.
-- Con Nomic, los chunks se embeben con `search_document` y las consultas con `search_query`, por lotes de 32.
+- Con Gemini, chunks y consultas llevan el prefijo de tarea que pide el modelo (`title: none | text:` y `task: search result | query:`) y se envían por lotes de 32. Si la API devuelve vectores de otro tamaño, se rechazan antes de llegar a la columna `vector(768)`.
 
 ### Alternativas consideradas
 
-- Embeddings dentro del contenedor con `fastembed` (mismo modelo cuantizado). Medido: 412 MB de pico frente a 512 MB disponibles en el plan de Render; con Nomic la API ocupa unos 175 MB.
-- Otros modelos de embeddings hospedados (p. ej. Voyage): no ofrecen 768 dimensiones, lo que obligaría a migrar la columna `vector(768)`.
+- Embeddings dentro del contenedor con `fastembed` (mismo modelo cuantizado). Medido: 412 MB de pico frente a 512 MB disponibles en el plan de Render; con un proveedor hospedado la API ocupa unos 175 MB.
+- API de Nomic (mismo modelo que en local): su registro exige una empresa.
+- Voyage: no ofrece 768 dimensiones, lo que obligaría a migrar la columna `vector(768)`.
 
 ### Consecuencias
 
-- Mismo esquema y dimensiones en local y en la demo.
+- Mismo esquema y dimensiones en local y en la demo. Los vectores de Ollama y Gemini no son comparables entre sí: cada entorno usa su propia base de datos.
+- En el plan gratuito de Gemini, Google puede usar los textos enviados; la demo es solo para documentos de ejemplo.
 - `/health` solo consulta Ollama si algún proveedor lo usa; los proveedores hospedados no se llaman en el health check porque cada llamada cuesta.
 - La configuración se niega a arrancar si falta la clave del proveedor elegido.
 

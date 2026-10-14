@@ -80,8 +80,8 @@ def health(db: Session = Depends(get_db)) -> JSONResponse:
     if settings.LLM_PROVIDER == "anthropic":
         checks["anthropic"] = {"status": "ok", "model": settings.ANTHROPIC_MODEL}
 
-    if settings.EMBEDDING_PROVIDER == "nomic":
-        checks["nomic"] = {"status": "ok", "model": settings.NOMIC_EMBEDDING_MODEL}
+    if settings.EMBEDDING_PROVIDER == "gemini":
+        checks["gemini"] = {"status": "ok", "model": settings.GEMINI_EMBEDDING_MODEL}
 
     healthy = all(
         check["status"] == "ok"

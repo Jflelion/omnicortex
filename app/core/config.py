@@ -25,7 +25,7 @@ class Settings(BaseSettings):
 
     # "ollama" for local development, "anthropic" for the hosted demo.
     LLM_PROVIDER: Literal["ollama", "anthropic"] = "ollama"
-    EMBEDDING_PROVIDER: Literal["ollama", "nomic"] = "ollama"
+    EMBEDDING_PROVIDER: Literal["ollama", "gemini"] = "ollama"
 
     LLM_MODEL: str = "qwen2.5:3b"
     LLM_MAX_TOKENS: int = 120
@@ -42,8 +42,8 @@ class Settings(BaseSettings):
     ANTHROPIC_MAX_TOKENS: int = 1024
     ANTHROPIC_EFFORT: Literal["low", "medium", "high"] = "low"
 
-    NOMIC_API_KEY: str | None = None
-    NOMIC_EMBEDDING_MODEL: str = "nomic-embed-text-v1.5"
+    GEMINI_API_KEY: str | None = None
+    GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-2"
 
     HEALTH_CHECK_TIMEOUT_SECONDS: int = 3
 
@@ -55,8 +55,8 @@ class Settings(BaseSettings):
         if self.LLM_PROVIDER == "anthropic" and not self.ANTHROPIC_API_KEY:
             raise ValueError("LLM_PROVIDER=anthropic requires ANTHROPIC_API_KEY")
 
-        if self.EMBEDDING_PROVIDER == "nomic" and not self.NOMIC_API_KEY:
-            raise ValueError("EMBEDDING_PROVIDER=nomic requires NOMIC_API_KEY")
+        if self.EMBEDDING_PROVIDER == "gemini" and not self.GEMINI_API_KEY:
+            raise ValueError("EMBEDDING_PROVIDER=gemini requires GEMINI_API_KEY")
 
         return self
 

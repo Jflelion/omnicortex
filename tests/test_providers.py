@@ -11,7 +11,9 @@ from app.core.config import Settings, settings
 from app.core.exceptions import AIServiceUnavailableError
 from app.services import embedding_service
 from app.services.embedding_service import (
-    NOMIC_BATCH_SIZE,
+    GEMINI_BATCH_SIZE,
+    GEMINI_DOCUMENT_PREFIX,
+    GEMINI_QUERY_PREFIX,
     generate_document_embeddings,
     generate_embedding,
 )
@@ -71,14 +73,14 @@ def test_anthropic_connection_error_becomes_unavailable(claude):
 
 
 @pytest.fixture
-def nomic(monkeypatch):
-    monkeypatch.setattr(settings, "EMBEDDING_PROVIDER", "nomic")
-    monkeypatch.setattr(settings, "NOMIC_API_KEY", "nk-test")
+def gemini(monkeypatch):
+    monkeypatch.setattr(settings, "EMBEDDING_PROVIDER", "gemini")
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "g-test")
 
     def _post(url, headers, json, timeout):
         response = MagicMock()
         response.json.return_value = {
-            "embeddings": [[float(i)] * 768 for i, _ in enumerate(json["texts"])]
+            "embeddings": [{"values": [float(i)] * 768} for i, _ in enumerate(json["requests"])]
         }
         return response
 
@@ -88,32 +90,49 @@ def nomic(monkeypatch):
     return post
 
 
-def test_nomic_query_embedding_uses_search_query(nomic):
+def sent_texts(call) -> list[str]:
+    return [request["content"]["parts"][0]["text"] for request in call.kwargs["json"]["requests"]]
+
+
+def test_gemini_query_embedding_uses_query_prefix(gemini):
     assert len(generate_embedding("hola")) == 768
 
-    body = nomic.call_args.kwargs["json"]
-    assert body["task_type"] == "search_query"
-    assert body["dimensionality"] == 768
-    assert nomic.call_args.kwargs["headers"] == {"Authorization": "Bearer nk-test"}
+    call = gemini.call_args
+    assert call.args[0].endswith("/models/gemini-embedding-2:batchEmbedContents")
+    assert call.kwargs["headers"] == {"x-goog-api-key": "g-test"}
+    assert sent_texts(call) == [GEMINI_QUERY_PREFIX + "hola"]
+    assert call.kwargs["json"]["requests"][0]["outputDimensionality"] == 768
 
 
-def test_nomic_document_embeddings_are_batched_in_order(nomic):
-    texts = [f"chunk {i}" for i in range(NOMIC_BATCH_SIZE + 3)]
+def test_gemini_document_embeddings_are_batched_in_order(gemini):
+    texts = [f"chunk {i}" for i in range(GEMINI_BATCH_SIZE + 3)]
 
     embeddings = generate_document_embeddings(texts)
 
     assert len(embeddings) == len(texts)
-    assert nomic.call_count == 2
-    assert all(call.kwargs["json"]["task_type"] == "search_document" for call in nomic.call_args_list)
+    assert gemini.call_count == 2
+    assert sent_texts(gemini.call_args_list[1]) == [
+        GEMINI_DOCUMENT_PREFIX + text for text in texts[GEMINI_BATCH_SIZE:]
+    ]
     # Second batch restarts its index: order within each batch is preserved.
-    assert embeddings[NOMIC_BATCH_SIZE][0] == 0.0
-    assert embeddings[NOMIC_BATCH_SIZE + 2][0] == 2.0
+    assert embeddings[GEMINI_BATCH_SIZE][0] == 0.0
+    assert embeddings[GEMINI_BATCH_SIZE + 2][0] == 2.0
 
 
-def test_nomic_errors_become_unavailable(nomic):
+def test_gemini_wrong_dimensions_are_rejected(gemini):
+    response = MagicMock()
+    response.json.return_value = {"embeddings": [{"values": [0.1] * 3072}]}
+    gemini.side_effect = None
+    gemini.return_value = response
+
+    with pytest.raises(AIServiceUnavailableError):
+        generate_embedding("hola")
+
+
+def test_gemini_errors_become_unavailable(gemini):
     import requests
 
-    nomic.side_effect = requests.ConnectionError()
+    gemini.side_effect = requests.ConnectionError()
 
     with pytest.raises(AIServiceUnavailableError):
         generate_embedding("hola")
@@ -123,7 +142,7 @@ def test_nomic_errors_become_unavailable(nomic):
     ("overrides", "missing"),
     [
         ({"LLM_PROVIDER": "anthropic"}, "ANTHROPIC_API_KEY"),
-        ({"EMBEDDING_PROVIDER": "nomic"}, "NOMIC_API_KEY"),
+        ({"EMBEDDING_PROVIDER": "gemini"}, "GEMINI_API_KEY"),
     ],
 )
 def test_hosted_providers_require_api_keys(overrides, missing):
@@ -133,12 +152,12 @@ def test_hosted_providers_require_api_keys(overrides, missing):
 
 def test_health_skips_ollama_when_demo_providers_are_used(client, monkeypatch):
     monkeypatch.setattr(settings, "LLM_PROVIDER", "anthropic")
-    monkeypatch.setattr(settings, "EMBEDDING_PROVIDER", "nomic")
+    monkeypatch.setattr(settings, "EMBEDDING_PROVIDER", "gemini")
     get = MagicMock()
     monkeypatch.setattr("app.routers.health.requests.get", get)
 
     response = client.get("/health")
 
     assert response.status_code == 200
-    assert set(response.json()["checks"]) == {"database", "anthropic", "nomic"}
+    assert set(response.json()["checks"]) == {"database", "anthropic", "gemini"}
     get.assert_not_called()

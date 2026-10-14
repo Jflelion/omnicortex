@@ -23,8 +23,8 @@ services:
       - key: ANTHROPIC_MODEL
         value: claude-haiku-5-5
       - key: EMBEDDING_PROVIDER
-        value: nomic
-      - key: NOMIC_API_KEY
+        value: gemini
+      - key: GEMINI_API_KEY
         sync: false
       - key: CORS_ORIGINS
         value: https://omnicortex.onrender.com

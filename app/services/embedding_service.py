@@ -2,13 +2,13 @@
 Embedding generation behind a provider switch (``EMBEDDING_PROVIDER``):
 
 - ``ollama``: local ``nomic-embed-text`` (development).
-- ``nomic``: Nomic's hosted API with the same model family and the same 768
+- ``gemini``: Google's ``gemini-embedding-2`` reduced to the same 768
   dimensions, so the schema does not change (public demo).
 
 Documents and queries are embedded through separate functions because
-Nomic models are trained with a task prefix (``search_document`` vs
-``search_query``). Ollama keeps the original behaviour (no prefix) so
-existing local vectors stay comparable.
+retrieval models are trained with different instructions for each side.
+Ollama keeps the original behaviour (no prefix) so existing local vectors
+stay comparable.
 """
 
 import requests
@@ -17,11 +17,15 @@ from app.core.config import settings
 from app.core.exceptions import AIServiceUnavailableError
 
 
-NOMIC_EMBEDDING_URL = "https://api-atlas.nomic.ai/v1/embedding/text"
+GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta"
 EMBEDDING_DIMENSIONS = 768
 
 # Texts sent per request to the hosted API.
-NOMIC_BATCH_SIZE = 32
+GEMINI_BATCH_SIZE = 32
+
+# gemini-embedding-2 takes the task as a text prefix instead of task_type.
+GEMINI_QUERY_PREFIX = "task: search result | query: "
+GEMINI_DOCUMENT_PREFIX = "title: none | text: "
 
 
 def generate_embedding(text: str) -> list[float]:
@@ -29,8 +33,8 @@ def generate_embedding(text: str) -> list[float]:
     Embed a search query.
     """
 
-    if settings.EMBEDDING_PROVIDER == "nomic":
-        return _nomic_embeddings([text], task_type="search_query")[0]
+    if settings.EMBEDDING_PROVIDER == "gemini":
+        return _gemini_embeddings([GEMINI_QUERY_PREFIX + text])[0]
 
     return _ollama_embedding(text)
 
@@ -40,15 +44,15 @@ def generate_document_embeddings(texts: list[str]) -> list[list[float]]:
     Embed document chunks, preserving order.
     """
 
-    if settings.EMBEDDING_PROVIDER == "nomic":
+    if settings.EMBEDDING_PROVIDER == "gemini":
         embeddings: list[list[float]] = []
 
-        for start in range(0, len(texts), NOMIC_BATCH_SIZE):
+        for start in range(0, len(texts), GEMINI_BATCH_SIZE):
             embeddings.extend(
-                _nomic_embeddings(
-                    texts[start:start + NOMIC_BATCH_SIZE],
-                    task_type="search_document"
-                )
+                _gemini_embeddings([
+                    GEMINI_DOCUMENT_PREFIX + text
+                    for text in texts[start:start + GEMINI_BATCH_SIZE]
+                ])
             )
 
         return embeddings
@@ -78,23 +82,25 @@ def _ollama_embedding(text: str) -> list[float]:
     return response.json()["embedding"]
 
 
-def _nomic_embeddings(
-    texts: list[str],
-    task_type: str
-) -> list[list[float]]:
+def _gemini_embeddings(texts: list[str]) -> list[list[float]]:
     if not texts:
         return []
 
+    model = f"models/{settings.GEMINI_EMBEDDING_MODEL}"
+
     try:
         response = requests.post(
-            NOMIC_EMBEDDING_URL,
-            headers={"Authorization": f"Bearer {settings.NOMIC_API_KEY}"},
+            f"{GEMINI_API_URL}/{model}:batchEmbedContents",
+            headers={"x-goog-api-key": settings.GEMINI_API_KEY or ""},
             json={
-                "model": settings.NOMIC_EMBEDDING_MODEL,
-                "texts": texts,
-                "task_type": task_type,
-                "dimensionality": EMBEDDING_DIMENSIONS,
-                "long_text_mode": "truncate",
+                "requests": [
+                    {
+                        "model": model,
+                        "content": {"parts": [{"text": text}]},
+                        "outputDimensionality": EMBEDDING_DIMENSIONS,
+                    }
+                    for text in texts
+                ]
             },
             timeout=settings.EMBEDDING_TIMEOUT_SECONDS
         )
@@ -106,11 +112,17 @@ def _nomic_embeddings(
             "Embedding service is unavailable"
         ) from error
 
-    embeddings = response.json()["embeddings"]
+    embeddings = [
+        item["values"]
+        for item in response.json().get("embeddings", [])
+    ]
 
-    if len(embeddings) != len(texts):
+    # A silent change of size would corrupt the vector(768) column.
+    if len(embeddings) != len(texts) or any(
+        len(embedding) != EMBEDDING_DIMENSIONS for embedding in embeddings
+    ):
         raise AIServiceUnavailableError(
-            "Embedding service returned an unexpected number of vectors"
+            "Embedding service returned unexpected vectors"
         )
 
     return embeddings
