@@ -1,8 +1,15 @@
 import time
 
+import requests
+
 from app.ai.gemini_http import GEMINI_API_URL, post_gemini
 from app.ai.llm.models import LLMResponse
 from app.core.config import settings
+from app.core.exceptions import AIServiceUnavailableError
+from app.observability.logger import get_logger
+
+
+logger = get_logger(__name__)
 
 
 BLOCKED_TEXT = "No puedo responder a esa solicitud."
@@ -22,17 +29,7 @@ class GeminiClient:
     ) -> LLMResponse:
         started = time.perf_counter_ns()
 
-        response = post_gemini(
-            f"{GEMINI_API_URL}/models/{settings.GEMINI_LLM_MODEL}:generateContent",
-            {
-                "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-                "generationConfig": {
-                    "maxOutputTokens": settings.GEMINI_MAX_TOKENS,
-                },
-            },
-            timeout=settings.LLM_TIMEOUT_SECONDS,
-            unavailable_message="Language model service is unavailable",
-        )
+        response = self._post_with_fallback(prompt)
 
         data = response.json()
 
@@ -49,7 +46,7 @@ class GeminiClient:
 
         return LLMResponse(
             text=text,
-            model=data.get("modelVersion", settings.GEMINI_LLM_MODEL),
+            model=data.get("modelVersion", ""),
             done_reason=candidate.get(
                 "finishReason",
                 data.get("promptFeedback", {}).get("blockReason", ""),
@@ -61,3 +58,43 @@ class GeminiClient:
             prompt_eval_count=usage.get("promptTokenCount", 0),
             eval_count=usage.get("candidatesTokenCount", 0),
         )
+
+    def _post_with_fallback(
+        self,
+        prompt: str,
+    ) -> requests.Response:
+        """
+        Try the primary model and then each fallback. Preview models are
+        often overloaded (503); another model usually still answers.
+        """
+
+        models = settings.gemini_llm_models
+        last_error: AIServiceUnavailableError | None = None
+
+        for model in models:
+            try:
+                return post_gemini(
+                    f"{GEMINI_API_URL}/models/{model}:generateContent",
+                    {
+                        "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+                        "generationConfig": {
+                            "maxOutputTokens": settings.GEMINI_MAX_TOKENS,
+                        },
+                    },
+                    timeout=settings.LLM_TIMEOUT_SECONDS,
+                    unavailable_message="Language model service is unavailable",
+                )
+
+            except AIServiceUnavailableError as error:
+                last_error = error
+
+                if model != models[-1]:
+                    logger.warning(
+                        "Gemini model %s failed (%s); falling back to the next model",
+                        model,
+                        error,
+                    )
+
+        assert last_error is not None
+
+        raise last_error

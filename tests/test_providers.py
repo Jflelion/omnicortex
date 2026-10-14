@@ -169,3 +169,43 @@ def test_health_skips_ollama_when_demo_providers_are_used(client, monkeypatch):
     assert response.status_code == 200
     assert set(response.json()["checks"]) == {"database", "gemini"}
     get.assert_not_called()
+
+
+def test_gemini_llm_falls_back_when_primary_model_is_overloaded(gemini_llm, monkeypatch):
+    client, post, _ = gemini_llm
+    monkeypatch.setattr(settings, "GEMINI_LLM_MODEL", "primary")
+    monkeypatch.setattr(settings, "GEMINI_LLM_FALLBACK_MODELS", "backup-a, backup-b")
+    monkeypatch.setattr(settings, "GEMINI_MAX_RETRIES", 0)
+
+    overloaded = requests.Response()
+    overloaded.status_code = 503
+    failing = MagicMock(raise_for_status=MagicMock(
+        side_effect=requests.HTTPError(response=overloaded)
+    ))
+    working = MagicMock(json=MagicMock(return_value=gemini_reply("Laura Gomez")))
+    post.side_effect = [failing, working]
+
+    assert client.generate("x").text == "Laura Gomez"
+
+    urls = [call.args[0] for call in post.call_args_list]
+    assert urls[0].endswith("/models/primary:generateContent")
+    assert urls[1].endswith("/models/backup-a:generateContent")
+
+
+def test_gemini_llm_fails_when_every_model_fails(gemini_llm, monkeypatch):
+    client, post, _ = gemini_llm
+    monkeypatch.setattr(settings, "GEMINI_LLM_FALLBACK_MODELS", "backup")
+    monkeypatch.setattr(settings, "GEMINI_MAX_RETRIES", 0)
+    post.side_effect = requests.ConnectionError()
+
+    with pytest.raises(AIServiceUnavailableError):
+        client.generate("x")
+
+    assert post.call_count == 2
+
+
+def test_gemini_model_list_has_no_duplicates(monkeypatch):
+    monkeypatch.setattr(settings, "GEMINI_LLM_MODEL", "a")
+    monkeypatch.setattr(settings, "GEMINI_LLM_FALLBACK_MODELS", "b, a ,,c")
+
+    assert settings.gemini_llm_models == ["a", "b", "c"]

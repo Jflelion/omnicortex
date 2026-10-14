@@ -39,6 +39,9 @@ class Settings(BaseSettings):
 
     GEMINI_API_KEY: str | None = None
     GEMINI_LLM_MODEL: str = "gemini-3.1-flash-lite"
+    # Comma-separated models tried in order when GEMINI_LLM_MODEL is
+    # overloaded (503), out of quota (429) or unavailable to the key.
+    GEMINI_LLM_FALLBACK_MODELS: str = "gemini-flash-lite-latest,gemini-flash-latest"
     GEMINI_MAX_TOKENS: int = 1024
     GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-2"
     # Extra attempts after a transient Gemini failure (429/5xx/network).
@@ -57,6 +60,20 @@ class Settings(BaseSettings):
             raise ValueError("Using the gemini provider requires GEMINI_API_KEY")
 
         return self
+
+    @property
+    def gemini_llm_models(self) -> list[str]:
+        """
+        Primary Gemini model followed by its fallbacks, without duplicates.
+        """
+
+        models = [self.GEMINI_LLM_MODEL] + [
+            model.strip()
+            for model in self.GEMINI_LLM_FALLBACK_MODELS.split(",")
+            if model.strip()
+        ]
+
+        return list(dict.fromkeys(models))
 
     @property
     def cors_origins_list(self) -> list[str]:

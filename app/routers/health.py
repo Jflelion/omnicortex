@@ -81,6 +81,11 @@ def health(db: Session = Depends(get_db)) -> JSONResponse:
         checks["gemini"] = {
             "status": "ok",
             "llm": settings.GEMINI_LLM_MODEL if settings.LLM_PROVIDER == "gemini" else None,
+            "llm_fallbacks": (
+                settings.gemini_llm_models[1:]
+                if settings.LLM_PROVIDER == "gemini"
+                else None
+            ),
             "embeddings": (
                 settings.GEMINI_EMBEDDING_MODEL
                 if settings.EMBEDDING_PROVIDER == "gemini"
