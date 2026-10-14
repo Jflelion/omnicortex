@@ -1,12 +1,11 @@
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-import anthropic
-import httpx2
 import pytest
+import requests
 from pydantic import ValidationError
 
-from app.ai.llm.anthropic_client import REFUSAL_TEXT, AnthropicClient
+from app.ai.llm import gemini_client
+from app.ai.llm.gemini_client import BLOCKED_TEXT, GeminiClient
 from app.core.config import Settings, settings
 from app.core.exceptions import AIServiceUnavailableError
 from app.services import embedding_service
@@ -19,29 +18,32 @@ from app.services.embedding_service import (
 )
 
 
-def claude_message(*texts: str, stop_reason: str = "end_turn") -> SimpleNamespace:
-    return SimpleNamespace(
-        content=[SimpleNamespace(type="thinking", thinking="")]
-        + [SimpleNamespace(type="text", text=text) for text in texts],
-        model="claude-haiku-5-5",
-        stop_reason=stop_reason,
-        usage=SimpleNamespace(input_tokens=120, output_tokens=15),
-    )
+def gemini_reply(*texts: str, finish_reason: str = "STOP") -> dict:
+    return {
+        "candidates": [{
+            "content": {"parts": [{"text": text} for text in texts]},
+            "finishReason": finish_reason,
+        }],
+        "usageMetadata": {"promptTokenCount": 120, "candidatesTokenCount": 15},
+        "modelVersion": "gemini-2.5-flash-lite",
+    }
 
 
 @pytest.fixture
-def claude(monkeypatch):
-    monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "test-key")
-    client = AnthropicClient()
-    create = MagicMock()
-    monkeypatch.setattr(client._client.messages, "create", create)
+def gemini_llm(monkeypatch):
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "g-test")
+    post = MagicMock()
+    monkeypatch.setattr(gemini_client.requests, "post", post)
 
-    return client, create
+    def _reply(payload: dict) -> None:
+        post.return_value = MagicMock(json=MagicMock(return_value=payload))
+
+    return GeminiClient(), post, _reply
 
 
-def test_anthropic_client_returns_text_and_usage(claude):
-    client, create = claude
-    create.return_value = claude_message("Laura ", "Gomez")
+def test_gemini_llm_returns_text_and_usage(gemini_llm):
+    client, post, reply = gemini_llm
+    reply(gemini_reply("Laura ", "Gomez"))
 
     response = client.generate("PREGUNTA")
 
@@ -49,24 +51,27 @@ def test_anthropic_client_returns_text_and_usage(claude):
     assert response.prompt_eval_count == 120
     assert response.eval_count == 15
 
-    kwargs = create.call_args.kwargs
-    assert kwargs["model"] == settings.ANTHROPIC_MODEL
-    assert kwargs["output_config"] == {"effort": settings.ANTHROPIC_EFFORT}
-    assert kwargs["messages"] == [{"role": "user", "content": "PREGUNTA"}]
+    assert post.call_args.args[0].endswith(f"/models/{settings.GEMINI_LLM_MODEL}:generateContent")
+    assert post.call_args.kwargs["headers"] == {"x-goog-api-key": "g-test"}
+    body = post.call_args.kwargs["json"]
+    assert body["contents"][0]["parts"][0]["text"] == "PREGUNTA"
+    assert body["generationConfig"]["maxOutputTokens"] == settings.GEMINI_MAX_TOKENS
 
 
-def test_anthropic_refusal_returns_fixed_text(claude):
-    client, create = claude
-    create.return_value = claude_message("parcial", stop_reason="refusal")
+def test_gemini_llm_blocked_prompt_returns_fixed_text(gemini_llm):
+    client, _, reply = gemini_llm
+    reply({"promptFeedback": {"blockReason": "SAFETY"}})
 
-    assert client.generate("x").text == REFUSAL_TEXT
+    response = client.generate("x")
+
+    assert response.text == BLOCKED_TEXT
+    assert response.done_reason == "SAFETY"
 
 
-def test_anthropic_connection_error_becomes_unavailable(claude):
-    client, create = claude
-    create.side_effect = anthropic.APIConnectionError(
-        request=httpx2.Request("POST", "https://api.anthropic.com/v1/messages")
-    )
+@pytest.mark.parametrize("error", [requests.ConnectionError(), requests.Timeout(), requests.HTTPError()])
+def test_gemini_llm_errors_become_unavailable(gemini_llm, error):
+    client, post, _ = gemini_llm
+    post.side_effect = error
 
     with pytest.raises(AIServiceUnavailableError):
         client.generate("x")
@@ -130,28 +135,20 @@ def test_gemini_wrong_dimensions_are_rejected(gemini):
 
 
 def test_gemini_errors_become_unavailable(gemini):
-    import requests
-
     gemini.side_effect = requests.ConnectionError()
 
     with pytest.raises(AIServiceUnavailableError):
         generate_embedding("hola")
 
 
-@pytest.mark.parametrize(
-    ("overrides", "missing"),
-    [
-        ({"LLM_PROVIDER": "anthropic"}, "ANTHROPIC_API_KEY"),
-        ({"EMBEDDING_PROVIDER": "gemini"}, "GEMINI_API_KEY"),
-    ],
-)
-def test_hosted_providers_require_api_keys(overrides, missing):
-    with pytest.raises(ValidationError, match=missing):
+@pytest.mark.parametrize("overrides", [{"LLM_PROVIDER": "gemini"}, {"EMBEDDING_PROVIDER": "gemini"}])
+def test_gemini_provider_requires_api_key(overrides):
+    with pytest.raises(ValidationError, match="GEMINI_API_KEY"):
         Settings(_env_file=None, DATABASE_URL="sqlite://", SECRET_KEY="x", **overrides)
 
 
 def test_health_skips_ollama_when_demo_providers_are_used(client, monkeypatch):
-    monkeypatch.setattr(settings, "LLM_PROVIDER", "anthropic")
+    monkeypatch.setattr(settings, "LLM_PROVIDER", "gemini")
     monkeypatch.setattr(settings, "EMBEDDING_PROVIDER", "gemini")
     get = MagicMock()
     monkeypatch.setattr("app.routers.health.requests.get", get)
@@ -159,5 +156,5 @@ def test_health_skips_ollama_when_demo_providers_are_used(client, monkeypatch):
     response = client.get("/health")
 
     assert response.status_code == 200
-    assert set(response.json()["checks"]) == {"database", "anthropic", "gemini"}
+    assert set(response.json()["checks"]) == {"database", "gemini"}
     get.assert_not_called()

@@ -23,8 +23,8 @@ class Settings(BaseSettings):
     OLLAMA_BASE_URL: str = "http://localhost:11434"
     OLLAMA_KEEP_ALIVE: str = "30m"
 
-    # "ollama" for local development, "anthropic" for the hosted demo.
-    LLM_PROVIDER: Literal["ollama", "anthropic"] = "ollama"
+    # "ollama" for local development, "gemini" for the hosted demo.
+    LLM_PROVIDER: Literal["ollama", "gemini"] = "ollama"
     EMBEDDING_PROVIDER: Literal["ollama", "gemini"] = "ollama"
 
     LLM_MODEL: str = "qwen2.5:3b"
@@ -37,12 +37,9 @@ class Settings(BaseSettings):
     # Previous messages included in the prompt of a conversation turn.
     CONVERSATION_HISTORY_MESSAGES: int = 6
 
-    ANTHROPIC_API_KEY: str | None = None
-    ANTHROPIC_MODEL: str = "claude-haiku-5-5"
-    ANTHROPIC_MAX_TOKENS: int = 1024
-    ANTHROPIC_EFFORT: Literal["low", "medium", "high"] = "low"
-
     GEMINI_API_KEY: str | None = None
+    GEMINI_LLM_MODEL: str = "gemini-2.5-flash-lite"
+    GEMINI_MAX_TOKENS: int = 1024
     GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-2"
 
     HEALTH_CHECK_TIMEOUT_SECONDS: int = 3
@@ -52,11 +49,10 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def _require_provider_keys(self) -> "Settings":
-        if self.LLM_PROVIDER == "anthropic" and not self.ANTHROPIC_API_KEY:
-            raise ValueError("LLM_PROVIDER=anthropic requires ANTHROPIC_API_KEY")
-
-        if self.EMBEDDING_PROVIDER == "gemini" and not self.GEMINI_API_KEY:
-            raise ValueError("EMBEDDING_PROVIDER=gemini requires GEMINI_API_KEY")
+        if "gemini" in (self.LLM_PROVIDER, self.EMBEDDING_PROVIDER) and not (
+            self.GEMINI_API_KEY
+        ):
+            raise ValueError("Using the gemini provider requires GEMINI_API_KEY")
 
         return self
 

@@ -1,5 +1,5 @@
-from app.ai.llm.anthropic_client import AnthropicClient
 from app.ai.llm.client import OllamaClient
+from app.ai.llm.gemini_client import GeminiClient
 from app.ai.llm.models import LLMResponse
 from app.core.config import settings
 
@@ -13,9 +13,9 @@ class LLMService:
     """
 
     def __init__(self) -> None:
-        self._client: OllamaClient | AnthropicClient = (
-            AnthropicClient()
-            if settings.LLM_PROVIDER == "anthropic"
+        self._client: OllamaClient | GeminiClient = (
+            GeminiClient()
+            if settings.LLM_PROVIDER == "gemini"
             else OllamaClient()
         )
 

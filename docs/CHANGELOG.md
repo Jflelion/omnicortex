@@ -29,7 +29,7 @@ El formato se inspira en Keep a Changelog y el proyecto seguirá versionado sem�
 - Frontend React + TypeScript (`frontend/`): login, documentos con estado en vivo, chat con historial y fuentes.
 - Servicio `web` en docker-compose (nginx + build de React, proxy `/api`).
 - CI con GitHub Actions.
-- Proveedores de IA intercambiables: Claude Haiku (`LLM_PROVIDER=anthropic`) y embeddings de Gemini (`EMBEDDING_PROVIDER=gemini`).
+- Proveedores de IA intercambiables: Gemini para respuestas (`LLM_PROVIDER=gemini`) y embeddings (`EMBEDDING_PROVIDER=gemini`): demo sin costo con una sola clave.
 - Blueprint de Render (`render.yaml`) y guía `docs/DEPLOY.md`; la API respeta `PORT`.
 - Aviso en el login mientras el servidor de la demo despierta.
 - Capturas de pantalla en el README.

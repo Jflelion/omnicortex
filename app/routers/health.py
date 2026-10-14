@@ -77,11 +77,16 @@ def health(db: Session = Depends(get_db)) -> JSONResponse:
 
     # Hosted providers are not called here (each call costs money); the
     # settings already refuse to start without their API keys.
-    if settings.LLM_PROVIDER == "anthropic":
-        checks["anthropic"] = {"status": "ok", "model": settings.ANTHROPIC_MODEL}
-
-    if settings.EMBEDDING_PROVIDER == "gemini":
-        checks["gemini"] = {"status": "ok", "model": settings.GEMINI_EMBEDDING_MODEL}
+    if "gemini" in (settings.LLM_PROVIDER, settings.EMBEDDING_PROVIDER):
+        checks["gemini"] = {
+            "status": "ok",
+            "llm": settings.GEMINI_LLM_MODEL if settings.LLM_PROVIDER == "gemini" else None,
+            "embeddings": (
+                settings.GEMINI_EMBEDDING_MODEL
+                if settings.EMBEDDING_PROVIDER == "gemini"
+                else None
+            ),
+        }
 
     healthy = all(
         check["status"] == "ok"
