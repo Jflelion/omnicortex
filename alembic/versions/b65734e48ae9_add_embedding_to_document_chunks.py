@@ -17,6 +17,15 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    # The column was originally created outside Alembic, so this revision
+    # only changed its type. Creating it when missing lets a fresh database
+    # migrate from scratch; existing databases are unaffected.
+    op.execute(
+        """
+        ALTER TABLE document_chunks
+        ADD COLUMN IF NOT EXISTS embedding vector(768);
+        """
+    )
     op.execute(
         """
         ALTER TABLE document_chunks
@@ -24,14 +33,12 @@ def upgrade() -> None:
         TYPE vector(768);
         """
     )
-    # ### end Alembic commands ###
 
 
 def downgrade() -> None:
     op.execute(
         """
         ALTER TABLE document_chunks
-        ALTER COLUMN embedding
-        TYPE vector(1536);
+        DROP COLUMN IF EXISTS embedding;
         """
     )

@@ -47,6 +47,17 @@ services:
       db:
         condition: service_healthy
 
+  web:
+    build: ./frontend
+    container_name: omnicortex_web
+    restart: unless-stopped
+
+    ports:
+      - "${WEB_PORT:-3000}:80"
+
+    depends_on:
+      - api
+
 volumes:
   postgres_data:
   uploads_data:

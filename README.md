@@ -1,6 +1,16 @@
-# OmniCortex Backend
+# OmniCortex
+
+[![CI](https://github.com/Jflelion/omnicortex/actions/workflows/ci.yml/badge.svg)](https://github.com/Jflelion/omnicortex/actions/workflows/ci.yml)
 
 OmniCortex is a document intelligence platform (FastAPI backend + React frontend). Users upload PDFs, the API extracts and indexes their content, and questions are answered with a local RAG pipeline (pgvector + Ollama) that returns the sources used.
+
+![Chat with sources](docs/images/chat.png)
+
+<p align="center">
+  <img src="docs/images/login.png" alt="Login" width="62%">
+  &nbsp;
+  <img src="docs/images/mobile.png" alt="Mobile view" width="22%">
+</p>
 
 ## Stack
 
@@ -68,7 +78,11 @@ ollama pull qwen2.5:3b
 docker compose up -d --build
 ```
 
-The API container applies migrations and seeds the default roles on startup, then listens on http://127.0.0.1:8000. It reaches Ollama on the host through `host.docker.internal`.
+Open http://localhost:3000 and create an account.
+
+- `web` (port 3000): nginx serving the React build and proxying `/api` to the API.
+- `api` (port 8000): applies migrations and seeds the default roles on startup. It reaches Ollama on the host through `host.docker.internal`. Swagger at http://localhost:8000/docs.
+- `db` (port 5432): PostgreSQL 16 + pgvector.
 
 Note: `POSTGRES_*` values only take effect the first time the database volume is created.
 
@@ -173,6 +187,7 @@ In development, Vite proxies `/api` to the backend at `http://localhost:8000` (o
 - Alembic controls the schema. Do not use `Base.metadata.create_all()`.
 - Create migrations with `alembic revision --autogenerate -m "message"`.
 - Run tests with `pytest`.
+- CI (GitHub Actions) runs the backend tests, the full migration cycle on PostgreSQL + pgvector with `alembic check`, the frontend lint and build, and builds both Docker images.
 
 ## Roadmap
 

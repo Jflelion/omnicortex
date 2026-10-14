@@ -27,12 +27,16 @@ El formato se inspira en Keep a Changelog y el proyecto seguirá versionado sem�
 - Conversaciones (`/conversations`) con historial persistente, contexto de los últimos `CONVERSATION_HISTORY_MESSAGES` mensajes y título automático.
 - Las fuentes de cada respuesta se guardan con el mensaje e incluyen el nombre del archivo.
 - Frontend React + TypeScript (`frontend/`): login, documentos con estado en vivo, chat con historial y fuentes.
+- Servicio `web` en docker-compose (nginx + build de React, proxy `/api`).
+- CI con GitHub Actions.
+- Capturas de pantalla en el README.
 - Validación de `question` (1–2000 caracteres) y `limit` (1–20) en las preguntas.
 - Borrado en cascada (`ON DELETE CASCADE`) de usuario → documentos → chunks; los archivos subidos también se eliminan.
 
 ### Changed
 
 - Las respuestas de documentos ya no exponen la ruta interna del archivo (`filepath`).
+- La migración `b65734e48ae9` crea la columna `embedding` si no existe: una base de datos nueva ya puede migrar desde cero.
 - `embed_chunks` actualiza el estado de cada documento que procesa.
 
 ---
