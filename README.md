@@ -4,6 +4,8 @@
 
 OmniCortex is a document intelligence platform (FastAPI backend + React frontend). Users upload PDFs, the API extracts and indexes their content, and questions are answered with a local RAG pipeline (pgvector + Ollama) that returns the sources used.
 
+**Live demo: https://omnicortex.onrender.com** — create an account, upload a PDF and ask questions. It runs on free tiers: the first load can take up to a minute while the server wakes up, and the free Gemini plan may use submitted text to improve Google's products, so please upload sample documents only.
+
 ![Chat with sources](docs/images/chat.png)
 
 <p align="center">
