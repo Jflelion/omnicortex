@@ -4,15 +4,13 @@
 
 OmniCortex is a document intelligence platform (FastAPI backend + React frontend). Users upload PDFs, the API extracts and indexes their content, and questions are answered with a local RAG pipeline (pgvector + Ollama) that returns the sources used.
 
-**Live demo: https://omnicortex.onrender.com** — create an account, upload a PDF and ask questions. It runs on free tiers: the first load can take up to a minute while the server wakes up, and the free Gemini plan may use submitted text to improve Google's products, so please upload sample documents only.
+**Live demo: <https://omnicortex.onrender.com>** — create an account, upload a PDF and ask questions. No PDF at hand? Download the [sample document](docs/sample-onboarding.pdf) (a fictional onboarding manual) and ask "Who is the engineering manager?". It runs on free tiers: the first load can take up to a minute while the server wakes up, and the free Gemini plan may use submitted text to improve Google's products, so please upload sample documents only.
 
 ![Chat with sources](docs/images/chat.png)
 
-<p align="center">
-  <img src="docs/images/login.png" alt="Login" width="62%">
-  &nbsp;
-  <img src="docs/images/mobile.png" alt="Mobile view" width="22%">
-</p>
+| Login | Mobile |
+| --- | --- |
+| ![Login](docs/images/login.png) | ![Mobile view](docs/images/mobile.png) |
 
 ## Stack
 
@@ -81,10 +79,10 @@ ollama pull qwen2.5:3b
 docker compose up -d --build
 ```
 
-Open http://localhost:3000 and create an account.
+Open <http://localhost:3000> and create an account.
 
 - `web` (port 3000): nginx serving the React build and proxying `/api` to the API.
-- `api` (port 8000): applies migrations and seeds the default roles on startup. It reaches Ollama on the host through `host.docker.internal`. Swagger at http://localhost:8000/docs.
+- `api` (port 8000): applies migrations and seeds the default roles on startup. It reaches Ollama on the host through `host.docker.internal`. Swagger at <http://localhost:8000/docs>.
 - `db` (port 5432): PostgreSQL 16 + pgvector.
 
 Note: `POSTGRES_*` values only take effect the first time the database volume is created.
@@ -113,7 +111,7 @@ python run.py
 
 `GET /health` returns 200 when the database and Ollama (with both models) are reachable, and 503 with details otherwise.
 
-Swagger: http://127.0.0.1:8000/docs
+Swagger: <http://127.0.0.1:8000/docs>
 
 ## Usage Flow
 
