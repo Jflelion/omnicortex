@@ -1,6 +1,6 @@
 # OmniCortex Backend
 
-OmniCortex is a backend for a document intelligence platform. Users upload PDFs, the API extracts and indexes their content, and questions are answered with a local RAG pipeline (pgvector + Ollama) that returns the sources used.
+OmniCortex is a document intelligence platform (FastAPI backend + React frontend). Users upload PDFs, the API extracts and indexes their content, and questions are answered with a local RAG pipeline (pgvector + Ollama) that returns the sources used.
 
 ## Stack
 
@@ -11,6 +11,7 @@ OmniCortex is a backend for a document intelligence platform. Users upload PDFs,
 - PyJWT + Passlib (bcrypt)
 - PyMuPDF for text extraction
 - Ollama: `nomic-embed-text` (embeddings) and `qwen2.5:3b` (generation)
+- Frontend: React 19 + TypeScript + Vite + Tailwind CSS
 
 ## Features
 
@@ -42,6 +43,7 @@ omnicortex/
 │   ├── schemas/          # Pydantic schemas
 │   ├── services/         # extraction, chunking, embeddings, retrieval, RAG
 │   └── main.py
+├── frontend/             # React + TypeScript chat UI
 ├── alembic/              # migrations
 ├── docs/                 # architecture, decisions, changelog, roadmap
 ├── scripts/              # manual checks
@@ -153,6 +155,18 @@ python -m app.database.embed_chunks
 - `PATCH /conversations/{conversation_id}` — rename
 - `DELETE /conversations/{conversation_id}`
 - `POST /conversations/{conversation_id}/messages` — ask inside the conversation
+
+## Frontend
+
+Chat UI in [frontend/](frontend/): login and registration, PDF upload with live processing status (and retry for failed documents), conversation history, and answers with expandable sources showing the file, chunk and semantic similarity.
+
+```powershell
+cd frontend
+npm install
+npm run dev        # http://localhost:5173
+```
+
+In development, Vite proxies `/api` to the backend at `http://localhost:8000` (override with `VITE_PROXY_TARGET`), so no CORS setup is needed. `npm run build` type-checks and builds to `frontend/dist`.
 
 ## Development Notes
 

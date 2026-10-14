@@ -177,12 +177,12 @@ Estado: en desarrollo.
 
 ## Fase 10 — Frontend
 
-- Next.js.
-- Login.
-- Dashboard.
-- Upload.
-- Chat.
-- Fuentes visuales.
+Estado: en desarrollo (React + Vite en lugar de Next.js: no hace falta SSR para una app autenticada).
+
+- [x] Login y registro.
+- [x] Upload con estado de procesamiento.
+- [x] Chat con historial.
+- [x] Fuentes visuales.
 - Administración de usuarios.
 - Administración de documentos.
 - Métricas y observabilidad.
